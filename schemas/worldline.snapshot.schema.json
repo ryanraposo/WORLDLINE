@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldline.local/schema/worldline.snapshot.v1.json",
+  "title": "WORLDLINE Snapshot",
+  "type": "object",
+  "required": ["revision", "captured_at", "facts"],
+  "properties": {
+    "revision": {"type": "integer", "minimum": 0},
+    "captured_at": {"type": "number"},
+    "facts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["key", "value", "evidence", "knowledge", "tags"],
+        "properties": {
+          "key": {"type": "string"},
+          "value": {},
+          "knowledge": {"enum": ["known", "knowable", "unknown"]},
+          "tags": {"type": "array", "items": {"type": "string"}},
+          "evidence": {
+            "type": "object",
+            "required": ["source", "observed_at", "confidence"],
+            "properties": {
+              "source": {"type": "string"},
+              "observed_at": {"type": "number"},
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+              "revision": {"type": ["integer", "null"]},
+              "expires_at": {"type": ["number", "null"]},
+              "detail": {"type": "object"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

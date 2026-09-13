@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+from .model import Evidence, Fact
+from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
+from .store import WorldStore
+
+
+class WorldlineDaemon:
+    def __init__(self, store: WorldStore | None = None) -> None:
+        self.store = store or WorldStore()
+        self._closing = False
+
+    def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
+        req = Request.from_dict(raw)
+        if req.protocol != PROTOCOL_VERSION:
+            return error(req, "protocol_mismatch", f"supported protocol is {PROTOCOL_VERSION}")
+        if req.op not in CORE_OPS:
+            return error(req, "unknown_op", req.op)
+        if req.op in {"hello", "features"}:
+            return ok(req, {
+                "protocol": PROTOCOL_VERSION,
+                "ops": sorted(CORE_OPS),
+                "compatibility": ["embedded-worldline-six-op"],
+                "extension_model": ["providers", "consumers", "facts", "capabilities", "affordances"],
+            })
+        if req.op == "status":
+            snap = self.store.snapshot()
+            return ok(req, {"revision": snap.revision, "fact_count": len(snap.facts)})
+        if req.op in {"query", "capture"}:
+            return ok(req, self.store.snapshot().to_dict())
+        if req.op == "event":
+            key = str(req.args["key"])
+            fact = Fact(
+                key=key,
+                value=req.args.get("value"),
+                evidence=Evidence(
+                    source=str(req.args.get("source", "rpc:event")),
+                    confidence=float(req.args.get("confidence", 1.0)),
+                    expires_at=req.args.get("expires_at"),
+                ),
+                tags=tuple(req.args.get("tags") or ()),
+            )
+            revision = self.store.apply([fact], expected_revision=req.args.get("expected_revision"))
+            return ok(req, {"revision": revision})
+        if req.op == "arm":
+            return ok(req, {"armed": True, "revision": self.store.revision})
+        if req.op == "wait":
+            # Compatibility placeholder: real predicate subscriptions belong in the event engine.
+            return ok(req, {"revision": self.store.revision, "state": "ready"})
+        if req.op == "close":
+            self._closing = True
+            return ok(req, {"closing": True})
+        return error(req, "unimplemented", req.op)
+
+    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            while not reader.at_eof():
+                line = await reader.readline()
+                if not line:
+                    break
+                try:
+                    raw = json.loads(line)
+                    response = self.dispatch(raw)
+                except Exception as exc:  # boundary: never tear down daemon on malformed request
+                    response = {"ok": False, "protocol": PROTOCOL_VERSION,
+                                "error": {"code": "bad_request", "message": str(exc)}}
+                writer.write((json.dumps(response, separators=(",", ":")) + "\n").encode())
+                await writer.drain()
+                if self._closing:
+                    break
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+
+async def serve(socket_path: str) -> None:
+    path = Path(socket_path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    daemon = WorldlineDaemon()
+    server = await asyncio.start_unix_server(daemon.handle, path=str(path))
+    os.chmod(path, 0o600)
+    async with server:
+        await server.serve_forever()
+
+
+def default_socket() -> str:
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    return f"{runtime}/worldline/worldline.sock"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="WORLDLINE daemon")
+    parser.add_argument("--socket", default=default_socket())
+    args = parser.parse_args()
+    try:
+        asyncio.run(serve(args.socket))
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
