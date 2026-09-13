@@ -1,3 +1,5 @@
+![WORLDLINE](assets/brand/vector/worldline-readme-header.svg)
+
 # WORLDLINE
 
 **Persistent world-model and execution substrate for agents operating a real computer.**
@@ -79,3 +81,7 @@ worldlinectl --socket /tmp/worldline.sock query
 The standalone daemon preserves the later embedded WORLDLINE Unix-socket vocabulary (`status`, `event`, `capture`, `arm`, `wait`, `close`) as compatibility operations. The protocol itself is versioned and feature-discoverable so the public surface can grow without repeating the original hard-coded six-op limitation.
 
 See `docs/COMPATIBILITY.md`.
+
+## Identity
+
+The canonical WORLDLINE mark and production asset family live in [`assets/brand/`](assets/brand/README.md). The favicon-derived construction is the single official geometry across every scale and surface.

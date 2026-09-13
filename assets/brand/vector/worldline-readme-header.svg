@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="WORLDLINE">
+  <rect width="1280" height="320" rx="30" fill="#F7F7F5"/>
+  <g transform="translate(55 38) scale(.244)"><g>
+  <rect width="1000" height="1000" rx="220" fill="#050505"/>
+  <g fill="#FFFFFF" stroke="#FFFFFF">
+    <circle cx="500" cy="500" r="255" fill="none" stroke-width="62"/>
+    <path d="M185 500H815M500 185V815" stroke-width="54" stroke-linecap="round"/>
+    <circle cx="500" cy="500" r="70" stroke="none"/>
+    <circle cx="700" cy="345" r="78" stroke="#050505" stroke-width="28"/>
+  </g>
+</g></g>
+  <text x="350" y="145" fill="#050505" font-family="Arial, Helvetica, sans-serif" font-size="84" font-weight="700" letter-spacing="13">WORLDLINE</text>
+  <text x="356" y="200" fill="#050505" opacity=".66" font-family="Arial, Helvetica, sans-serif" font-size="23" letter-spacing="1.1">persistent world-model + execution substrate</text>
+  <path d="M356 232H1125" stroke="#050505" opacity=".16"/>
+  <circle cx="1147" cy="232" r="5" fill="#050505" opacity=".55"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="WORLDLINE loading">
+  <rect width="1000" height="1000" rx="220" fill="#050505"/>
+  <circle cx="500" cy="500" r="255" fill="none" stroke="#FFFFFF" stroke-width="54" opacity=".34"/>
+  <path d="M185 500H815M500 185V815" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round" opacity=".78"/>
+  <circle cx="500" cy="500" r="66" fill="#FFFFFF"/>
+  <g>
+    <animateTransform attributeName="transform" type="rotate" from="0 500 500" to="360 500 500" dur="1.35s" repeatCount="indefinite"/>
+    <circle cx="700" cy="345" r="72" fill="#FFFFFF" stroke="#050505" stroke-width="26"/>
+  </g>
+</svg>

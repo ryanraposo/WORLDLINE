@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="WORLDLINE">
+  <rect width="1200" height="630" fill="#F7F7F5"/>
+  <g transform="translate(74 95) scale(.44)"><g>
+  <rect width="1000" height="1000" rx="220" fill="#050505"/>
+  <g fill="#FFFFFF" stroke="#FFFFFF">
+    <circle cx="500" cy="500" r="255" fill="none" stroke-width="62"/>
+    <path d="M185 500H815M500 185V815" stroke-width="54" stroke-linecap="round"/>
+    <circle cx="500" cy="500" r="70" stroke="none"/>
+    <circle cx="700" cy="345" r="78" stroke="#050505" stroke-width="28"/>
+  </g>
+</g></g>
+  <text x="565" y="265" fill="#050505" font-family="Arial, Helvetica, sans-serif" font-size="66" font-weight="700" letter-spacing="9">WORLDLINE</text>
+  <text x="570" y="323" fill="#050505" opacity=".67" font-family="Arial, Helvetica, sans-serif" font-size="24">Persistent world-model and execution substrate</text>
+  <text x="570" y="357" fill="#050505" opacity=".67" font-family="Arial, Helvetica, sans-serif" font-size="24">for agents operating a real computer.</text>
+  <path d="M570 400H1080" stroke="#050505" opacity=".16"/>
+  <text x="570" y="440" fill="#050505" opacity=".48" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="2">OBSERVE · KNOW · ACT · VERIFY</text>
+</svg>
