@@ -1,9 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="WORLDLINE">
-  <rect width="1000" height="1000" rx="220" fill="#050505"/>
-  <g fill="#FFFFFF" stroke="#FFFFFF">
-    <circle cx="500" cy="500" r="255" fill="none" stroke-width="62"/>
-    <path d="M185 500H815M500 185V815" stroke-width="54" stroke-linecap="round"/>
-    <circle cx="500" cy="500" r="70" stroke="none"/>
-    <g><circle cx="700" cy="345" r="78" stroke="#050505" stroke-width="28"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="WORLDLINE mark">
+
+  <defs>
+    <mask id="ring-gap">
+      <rect width="1000" height="1000" fill="white"/>
+      <circle cx="692" cy="342" r="38" fill="black"/>
+    </mask>
+  </defs>
+
+  <g fill="#050505" stroke="#050505">
+    <g mask="url(#ring-gap)">
+      <circle cx="500" cy="500" r="247" fill="none" stroke-width="21"/>
+      <path d="M74 500 L250 493 L750 493 L926 500 L750 507 L250 507 Z" stroke="none"/>
+      <path d="M500 72 L507 250 L507 750 L500 928 L493 750 L493 250 Z" stroke="none"/>
+      <path d="M 523.97 226.05 L 532.52 226.93 L 541.04 228.08 L 549.52 229.50 L 557.96 231.18 L 566.33 233.12 L 574.65 235.32 L 582.88 237.79 L 591.04 240.51 L 599.11 243.48 L 607.08 246.71 L 614.95 250.18 L 622.70 253.89 L 630.34 257.85 L 637.85 262.04 L 645.22 266.47 L 652.45 271.12 L 659.53 276.00 L 666.46 281.10 L 673.22 286.41 L 679.81 291.93 L 686.23 297.65 L 692.46 303.58 L 698.51 309.69 L 704.36 315.99 L 691.73 327.36 L 686.66 321.05 L 681.38 314.89 L 675.90 308.88 L 670.22 303.03 L 664.35 297.35 L 658.28 291.85 L 652.04 286.52 L 645.61 281.39 L 639.01 276.45 L 632.25 271.71 L 625.32 267.17 L 618.24 262.84 L 611.01 258.73 L 603.64 254.84 L 596.14 251.18 L 588.50 247.74 L 580.75 244.54 L 572.88 241.58 L 564.91 238.86 L 556.83 236.39 L 548.67 234.17 L 540.42 232.20 L 532.10 230.49 L 523.71 229.04 Z" stroke="none"/>
+    </g>
+    <circle cx="500" cy="500" r="29" stroke="none"/>
+    <circle cx="692" cy="342" r="28" stroke="none"/>
   </g>
 </svg>

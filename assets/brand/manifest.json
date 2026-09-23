@@ -1,35 +1,28 @@
 {
   "name": "WORLDLINE",
-  "source": "Orbiting Crosshair Emblem.png (supplied reference; rebuilt as clean SVG primitives)",
+  "version": "2.0.0",
   "canonical": "vector/worldline-mark.svg",
-  "canonical_geometry": "favicon-derived",
-  "principles": [
-    "monochrome",
-    "single canonical emblem at every size",
-    "tiny-size legibility",
-    "orbit becomes motion"
-  ],
-  "assets": [
-    "README.md",
-    "favicon.ico",
-    "raster/apple-touch-icon-180.png",
-    "raster/favicon-16.png",
-    "raster/favicon-32.png",
-    "raster/favicon-64.png",
-    "raster/worldline-icon-256.png",
-    "vector/worldline-favicon.svg",
-    "vector/worldline-icon-light.svg",
-    "vector/worldline-icon.svg",
-    "vector/worldline-loader.svg",
-    "vector/worldline-lockup-reverse.svg",
-    "vector/worldline-lockup.svg",
-    "vector/worldline-mark-compact.svg",
-    "vector/worldline-mark-motion.svg",
-    "vector/worldline-mark-reverse.svg",
-    "vector/worldline-mark.svg",
-    "vector/worldline-readme-header.svg",
-    "vector/worldline-social-card.svg"
-  ],
-  "geometry_invariant": "one canonical geometry at every scale",
-  "version": "1.0.0"
+  "source": "User-supplied orbiting crosshair mark; reconstructed as clean SVG geometry.",
+  "geometry": {
+    "viewBox": "0 0 1000 1000",
+    "center": [
+      500,
+      500
+    ],
+    "ringRadius": 247,
+    "ringStroke": 21,
+    "centerNodeRadius": 29,
+    "observationNode": {
+      "cx": 692,
+      "cy": 342,
+      "r": 28
+    }
+  },
+  "semantics": {
+    "ring": "live world / continuity",
+    "crosshair": "addressability / precise agency",
+    "center": "grounded present state",
+    "observationNode": "active observation / Operating Fact",
+    "outerArc": "change through time / worldline"
+  }
 }

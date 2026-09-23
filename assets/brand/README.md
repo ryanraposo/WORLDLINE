@@ -1,41 +1,41 @@
-# WORLDLINE brand assets
+# WORLDLINE brand
 
 This directory is the source of truth for WORLDLINE's visual identity.
 
 ## Canonical mark
 
-`vector/worldline-mark.svg` is the canonical WORLDLINE mark.
+[`vector/worldline-mark.svg`](vector/worldline-mark.svg) is canonical.
 
-The favicon-derived construction is the official geometry at every scale: a dark rounded square carrying the white world/crosshair glyph, grounded center, and offset observation node. Favicons, application icons, lockups, documentation art, social cards, and motion states all derive from this exact construction.
+It is a geometric reconstruction of the supplied WORLDLINE mark: the world ring, cardinal address axes, grounded center, observation node, and the secondary trajectory arc.
 
-### Geometry invariant
+The mark is deliberately monochrome and survives from favicon size through display scale.
 
-The canonical geometry is intentionally shared from 16 px through display scale. `worldline-favicon.svg` and `worldline-mark-compact.svg` are aliases for integration contexts, not alternate logos.
+## Meaning
 
-The mark's visual semantics are:
+- **Ring** — the live world and its continuity.
+- **Crosshair** — addressability: a world that can be operated precisely.
+- **Center** — the grounded present state.
+- **Offset node** — active observation / an Operating Fact.
+- **Outer arc** — change through time: the worldline.
 
-- **Circle** — world state.
-- **Crosshair** — addressability and precise agency within that world.
-- **Center** — the grounded current state.
-- **Offset node** — changing evidence / active observation.
-- **Orbit in motion variants** — WORLDLINE continuously relating new evidence to a persistent world model.
+## Vector pack
 
-## Files
+- `worldline-mark.svg` — canonical transparent black mark.
+- `worldline-mark-reverse.svg` — transparent white mark.
+- `worldline-mark-field.svg` — white mark on black application field.
+- `worldline-mark-field-light.svg` — black mark on warm light field.
+- `worldline-favicon.svg` — application/favicon field edition.
+- `worldline-icon.svg` / `worldline-icon-light.svg` — compatibility aliases.
+- `worldline-mark-compact.svg` — compatibility alias.
+- `worldline-readme-header.svg` — repository header.
+- `worldline-social-card.svg` — social / Open Graph card.
+- `worldline-operating-fact.svg` — Operating Fact model.
+- `worldline-mark-motion.svg` — observation node in orbit.
+- `worldline-loader.svg` — compact loading state.
+- `worldline-wallpaper-dark.svg` / `worldline-wallpaper-light.svg` — large-field compositions.
 
-- `vector/worldline-mark.svg` — canonical mark.
-- `vector/worldline-mark-reverse.svg` — light-field inverse.
-- `vector/worldline-favicon.svg` — canonical geometry under the conventional web filename.
-- `vector/worldline-mark-compact.svg` — canonical geometry alias for dense UI.
-- `vector/worldline-icon.svg` / `worldline-icon-light.svg` — application icon editions.
-- `vector/worldline-lockup.svg` / `worldline-lockup-reverse.svg` — horizontal identity lockups.
-- `vector/worldline-readme-header.svg` — repository/documentation header.
-- `vector/worldline-social-card.svg` — social / Open Graph card.
-- `vector/worldline-mark-motion.svg` — canonical mark with the observation node in orbit.
-- `vector/worldline-loader.svg` — animated loading state.
-- `raster/` — production PNG exports.
-- `favicon.ico` — 16/32/64 px multi-size favicon.
-- `manifest.json` — asset metadata and canonical designation.
+## Usage
 
-## Usage rule
+Keep the canonical symbol geometry intact. Do not rotate, stretch, redraw, relocate the static observation node, or remove the secondary arc.
 
-When a new WORLDLINE surface needs branding, derive it from `vector/worldline-mark.svg`. Preserve the circle, crosshair, center, observation-node relationship, proportions, and rounded-square field. Adapt scale, surrounding composition, and motion to the surface while keeping the mark itself canonical.
+Supporting compositions may change around it. The symbol does not.
