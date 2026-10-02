@@ -10,12 +10,14 @@ from typing import Any
 from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .store import WorldStore
+from .providers.gnome import GNOMEProvider
 
 
 class WorldlineDaemon:
     def __init__(self, store: WorldStore | None = None) -> None:
         self.store = store or WorldStore()
         self._closing = False
+        self.providers = {"gnome": GNOMEProvider()}
 
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
         req = Request.from_dict(raw)
@@ -29,6 +31,19 @@ class WorldlineDaemon:
                 "ops": sorted(CORE_OPS),
                 "compatibility": ["embedded-worldline-six-op"],
                 "extension_model": ["providers", "consumers", "facts", "capabilities", "affordances"],
+                "providers": sorted(self.providers),
+            })
+        if req.op == "observe":
+            provider_name = str(req.args.get("provider", "gnome"))
+            provider = self.providers.get(provider_name)
+            if provider is None:
+                return error(req, "unknown_provider", provider_name)
+            facts = list(provider.observe())
+            revision = self.store.apply(facts, expected_revision=req.args.get("expected_revision"))
+            return ok(req, {
+                "provider": provider_name,
+                "revision": revision,
+                "fact_count": len(facts),
             })
         if req.op == "status":
             snap = self.store.snapshot()
