@@ -1,227 +1,206 @@
-![WORLDLINE](assets/banner.png)
+<p align="center">
+  <img src="assets/banner.png" alt="WORLDLINE" width="1200">
+</p>
 
 # WORLDLINE
 
-**A revisioned world model for a computer you can operate against.**
+> **WORLDLINE is the current.**
 
-WORLDLINE turns a changing desktop into explicit, evidence-bearing state.
+A live, revisioned view of what the machine knows now.
 
-Not a screenshot loop. Not an accessibility dump. Not a bag of tool calls.
+## Operating Fact
 
-The core unit is an **Operating Fact**: a versioned statement about the machine that is current and trustworthy enough to operate against.
-
-> **An Operating Fact is a versioned, evidence-bearing statement about the machine that WORLDLINE can presently operate against.**
+An **Operating Fact** is a typed statement about the machine at a particular revision.
 
 ```text
-WORLD
-  └── ENTITY
-       └── OPERATING FACT
-            ├── current version
-            ├── prior versions
-            └── evidence
+Operating Fact
+├── type
+├── value
+├── revision
+└── evidence
+    ├── source
+    ├── observed_at
+    └── detail
 ```
 
-A WORLDLINE **Revision** is the temporal cross-section of the Operating Fact versions that constitute the world at that point.
+The value is the present coordinate.
 
-![Operating Fact](assets/brand/vector/worldline-operating-fact.svg)
+The type tells the system what kind of coordinate it is.
 
-## Why
+The evidence receipt tells an agent where the coordinate came from.
 
-Desktop automation often discards information the operating system already knows and then asks pixels to reconstruct it.
+That makes a fact useful as machinery.
 
-WORLDLINE takes the opposite position:
-
-```text
-direct OS truth
-      ↓
-correlation
-      ↓
-derivation
-      ↓
-optional perception / inference
-      ↓
-agent reasoning
-```
-
-Use direct truth when the machine already has it. Use pixels when pixels are the truth. Use inference when neither is enough.
+See [`docs/OPERATING_FACT.md`](docs/OPERATING_FACT.md).
 
 ## Truth has a type
 
+WORLDLINE keeps the kind of knowledge alongside the knowledge itself.
+
 ```text
-DIRECT  >  CORRELATED  >  DERIVED  >  INFERRED
+DIRECT
+  ↓
+CORRELATED
+  ↓
+DERIVED
+  ↓
+INFERRED
 ```
 
-- **Direct** — the underlying subsystem stated it.
-- **Correlated** — independently observed identities were joined by evidence.
-- **Derived** — WORLDLINE calculated it from known facts.
-- **Inferred** — a model or heuristic interpreted ambiguous evidence.
+A direct operating-system fact carries the authority of the subsystem that stated it.
 
-Unknown is valid. Stale is valid. Invalid is valid.
+A correlated fact carries the evidence that joined its sources.
 
-A plausible lie is not.
+A derived fact carries the calculation that produced it.
 
-## The model
+An inferred fact carries the observation and interpretation that produced it.
+
+The type travels with the fact.
+
+## Evidence receipts
+
+Every useful fact has somewhere it came from.
+
+Examples include:
 
 ```text
-SOURCE
-  ↓
-OBSERVATION
-  ↓
-EVIDENCE
-  ↓
-OPERATING FACT
-  ↓
-WORLDLINE REVISION
-  ↓
-ACTION / REASONING
+AT-SPI event
+Mutter state
+D-Bus property
+PipeWire metadata
+journal entry
+state/config file
+environment
+Cua observation
+bounded command
 ```
 
-```text
-entity
-  window:482
+A receipt gives an agent a path back to the system that can explain or refresh the fact.
 
-operating fact
-  window:482.focused
+WORLDLINE carries that provenance forward with the present.
 
-version
-  window:482.focused@32 = true
+## The current
 
-evidence
-  Mutter focus-window
-  observed at R18492
-```
-
-A repeated observation of the same value confirms the current version. It does not create a new version merely because WORLDLINE looked again.
-
-## Architecture
-
-WORLDLINE is designed as a continuously maintained fact graph rather than a giant polling function.
+WORLDLINE joins the machine's existing sources of knowledge into one revisioned present.
 
 ```text
-collectors
-    │
-    ▼
-┌──────────────┐
-│  FACT STORE  │
-│ living world │
-└──────┬───────┘
+GNOME / Mutter
+AT-SPI
+PipeWire
+D-Bus
+system services
+state files
+logs
+runtime interfaces
        │
        ▼
-┌──────────────┐
-│ ENTITY GRAPH │
-│ app ─ window │
-│  │      │    │
-│ proc  a11y   │
-│         │    │
-│       pixels │
-└──────┬───────┘
+   observation
        │
        ▼
-   seal revision
+Operating Fact
        │
        ▼
-   WORLDLINE Rₙ
+   WORLDLINE
+       │
+       ├── revision
+       ├── evidence
+       ├── change
+       └── query / wait
 ```
 
-`capture()` should seal what WORLDLINE currently knows. It should not rediscover the desktop from scratch.
+Observation follows the fact to the place where it naturally exists.
 
-## Platform target
+A native event can advance a fact immediately.
 
-The first serious platform target is **Ubuntu GNOME Wayland**, with GNOME 50/51 treated as versioned platform adapters rather than assumptions baked into the truth core.
+A state file or journal entry can provide the evidence.
 
-The production collector model composes the desktop interfaces already present on that system:
+A runtime interface can expose the current value directly.
+
+A bounded reconciliation can refresh a source when needed.
+
+The daemon joins these observations into the current.
+
+## Current platform
+
+**GNOME on Wayland.**
+
+The platform is expressed through its own operating machinery:
 
 - **GNOME Shell / Mutter** — windows, focus, stacking, workspaces, displays.
-- **AT-SPI2** — semantic UI and accessibility events.
+- **AT-SPI2** — semantic UI and accessibility state.
 - **PipeWire** — media graph and frame transport.
-- **XDG Desktop Portal** — authorized capture/input sessions.
-- **systemd-logind** — login/session state.
+- **XDG Desktop Portal** — authorized desktop sessions.
+- **systemd-logind** — login and session state.
 - **NetworkManager** — network state.
 - **UPower** — power state.
 - **GSettings** — desktop configuration.
 - **`/proc`** — process facts.
-- **inotify** — scoped filesystem changes.
+- **filesystem and journal sources** — durable machine state.
 
-The GNOME integration belongs behind a small version-specific adapter. The truth core should not become a pile of compositor assumptions.
+GNOME and Mutter versions are observed as part of the current. Their changing APIs become new evidence sources while the Operating Fact model remains stable.
 
-## Failure is data
+See [`docs/OBSERVATION_SOURCES.md`](docs/OBSERVATION_SOURCES.md) and [`docs/GNOME_WAYLAND.md`](docs/GNOME_WAYLAND.md).
 
-WORLDLINE must never silently convert degraded observation into apparently normal state.
+## Change
 
-```text
-AT-SPI unavailable
-→ semantic capability unavailable
-
-Mutter generation changed
-→ compositor-backed identities invalidated
-
-event queue overflow
-→ source.gap
-→ reconciliation required
-
-PipeWire stream replaced
-→ old stream generation invalidated
-```
-
-Recovery may be automatic. Loss may not be invisible.
-
-## Identity
+A WORLDLINE revision is the present coordinate of the fact world.
 
 ```text
-session:<boot-id>:<logind-session-id>
-process:<boot-id>:<pid>:<proc-starttime>
-window:<session-generation>:<compositor-generation>:<stable-sequence>
+observe
+   ↓
+revision
+   ↓
+change
+   ↓
+new evidence
+   ↓
+new revision
 ```
 
-PID alone is not identity. A dead compositor generation cannot silently resurrect old windows.
+A fence establishes a causal boundary.
 
-## Action verification
+A contingent wait can ask for evidence that arrived after that boundary.
+
+This gives an action a present to begin from and a current to continue into.
+
+## Architecture
 
 ```text
-observe → act → correlate → verify
+sources
+   │
+   ▼
+observation
+   │
+   ▼
+typed facts + evidence
+   │
+   ▼
+revisioned current
+   │
+   ├── query
+   ├── wait
+   ├── continuation
+   └── capture
 ```
 
-not:
+`worldlined` is the persistent observation engine.
 
-```text
-act → sleep → hope
-```
+Its work is to keep the current current.
 
-Transactions bind an action to a before-revision, explicit preconditions, resulting revisions, postconditions, and evidence.
-
-## Performance bar
-
-Initial targets — **targets, not claims until benchmarked**:
-
-| Metric | Target |
-| --- | ---: |
-| Idle CPU | < 0.25% of one core |
-| Idle daemon RSS | < 50 MiB |
-| Ordinary event → fact | p99 < 2 ms |
-| Ordinary event → sealed revision | p99 < 5 ms |
-| Warm full snapshot | < 10 ms |
-| Daemon restart recovery | < 250 ms |
-| Steady-state polling where native events exist | 0 Hz |
-| Root required | never |
-| Network required | never |
-| Silent fact loss | never |
-
-## Current repository
+## Repository
 
 ```text
 src/worldline/
-  model.py          typed world facts and evidence
-  store.py          optimistic revisioned state store
-  capabilities.py   evidence-backed readiness ladder
-  transactions.py   pre/postcondition transaction primitives
+  model.py          typed facts and evidence
+  store.py          revisioned state store
+  capabilities.py   evidence-backed readiness
+  transactions.py   pre/postcondition primitives
   protocol.py       versioned RPC envelope
-  daemon.py         Unix-socket daemon
-  providers/        observation/capability providers
-    gnome.py        read-only GNOME/Wayland host facts
+  daemon.py         observation daemon
+  providers/        observation providers
+    gnome.py        GNOME / Wayland host facts
   consumers/        consumer adapters
 ```
-
-The runtime now has a read-only GNOME provider, real freshness fences, and contingent predicate waits. Cua/GWCU remains the actuation layer; `.gwcu` remains durable machine/workspace truth. The next work is deeper event coverage and typed compositor/media generations without bloating the core.
 
 ## Quick start
 
@@ -237,26 +216,15 @@ From another shell:
 
 ```bash
 worldlinectl --socket /tmp/worldline.sock status
-worldlinectl --socket /tmp/worldline.sock query
 worldlinectl --socket /tmp/worldline.sock observe
+worldlinectl --socket /tmp/worldline.sock query
 worldlinectl --socket /tmp/worldline.sock fence
 ```
 
-## Invariants
-
-1. **No identity without generation.**
-2. **No silent loss.**
-3. **No hidden inference.**
-4. **No fake atomicity.**
-5. **No PID identity.**
-6. **No action without a before-state.**
-7. **No success without evidence.**
-8. **No giant rescan where a native event exists.**
-9. **No consumer-specific meaning in base truth.**
-10. **No regression disguised as architectural improvement.**
-
-## Cua boundary\n\nWORLDLINE does not drive the desktop. Cua Driver remains the sole GUI actuator; GWCU composes policy and action spans around it. WORLDLINE supplies revisioned evidence, invalidation, fences, waits, and receipts. See [`docs/CUA_INTEGRATION.md`](docs/CUA_INTEGRATION.md).\n\n## Identity and media
+## Identity and media
 
 The canonical mark and vector media family live in [`assets/brand/`](assets/brand/README.md).
 
-The symbol encodes the same idea as the system: **a world, a present coordinate, an observation, and a trajectory through change.**
+The symbol carries the same idea as the system:
+
+**a world, a present coordinate, an observation, and a trajectory through change.**
