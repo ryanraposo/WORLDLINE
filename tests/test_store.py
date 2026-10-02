@@ -43,3 +43,18 @@ def test_fence_prevents_cached_truth_from_satisfying_fresh_wait():
     )
     assert ready
     assert revision > fence
+
+
+def test_fresh_wait_accepts_new_evidence_for_equality():
+    store = WorldStore()
+    store.apply([Fact("task.done", False, Evidence("seed"))])
+    fence = store.fence()
+    store.apply([Fact("task.done", True, Evidence("fresh"))])
+
+    ready, revision = store.wait_for(
+        {"path": "task.done", "op": "eq", "value": True, "fresh_after": fence},
+        after_revision=fence,
+        timeout=0.01,
+    )
+    assert ready
+    assert revision > fence
