@@ -69,14 +69,16 @@ class WorldStore:
                     f"expected revision {expected_revision}, current revision {self._revision}"
                 )
             changed = False
+            changed_keys: list[str] = []
             for fact in facts:
                 if self._facts.get(fact.key) != fact:
                     self._facts[fact.key] = fact
                     changed = True
+                    changed_keys.append(fact.key)
             if changed:
                 self._revision += 1
-                for fact in facts:
-                    self._changed_at[fact.key] = self._revision
+                for key in changed_keys:
+                    self._changed_at[key] = self._revision
                 self._changed.notify_all()
             return self._revision
 
