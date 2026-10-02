@@ -45,6 +45,9 @@ class WorldlineDaemon:
                 "revision": revision,
                 "fact_count": len(facts),
             })
+        if req.op == "fence":
+            revision = self.store.fence()
+            return ok(req, {"revision": revision, "code": "fenced"})
         if req.op == "status":
             snap = self.store.snapshot()
             return ok(req, {"revision": snap.revision, "fact_count": len(snap.facts)})
@@ -67,8 +70,26 @@ class WorldlineDaemon:
         if req.op == "arm":
             return ok(req, {"armed": True, "revision": self.store.revision})
         if req.op == "wait":
-            # Compatibility placeholder: real predicate subscriptions belong in the event engine.
-            return ok(req, {"revision": self.store.revision, "state": "ready"})
+            predicate = req.args.get("predicate")
+            if not isinstance(predicate, dict):
+                predicates = req.args.get("predicates")
+                if isinstance(predicates, list) and predicates:
+                    predicate = predicates[0]
+                else:
+                    return error(req, "invalid_wait", "wait requires predicate or predicates")
+            after = req.args.get("after_revision", self.store.revision)
+            try:
+                after = int(after)
+                timeout = max(0.001, min(float(req.args.get("timeout", 5.0)), 120.0))
+            except (TypeError, ValueError):
+                return error(req, "invalid_wait", "after_revision and timeout must be numeric")
+            ready, revision = self.store.wait_for(predicate, after_revision=after, timeout=timeout)
+            return ok(req, {
+                "revision": revision,
+                "state": "ready" if ready else "timeout",
+                "predicate": predicate,
+                "after_revision": after,
+            })
         if req.op == "close":
             self._closing = True
             return ok(req, {"closing": True})
