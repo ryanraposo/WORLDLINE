@@ -19,3 +19,27 @@ def test_optimistic_conflict():
         pass
     else:
         raise AssertionError("expected RevisionConflict")
+
+
+def test_fence_prevents_cached_truth_from_satisfying_fresh_wait():
+    store = WorldStore()
+    fact = Fact("task.done", True, Evidence("test"))
+    store.apply([fact])
+    fence = store.fence()
+
+    ready, revision = store.wait_for(
+        {"path": "task.done", "op": "eq", "value": True, "fresh_after": fence},
+        after_revision=fence,
+        timeout=0.01,
+    )
+    assert not ready
+    assert revision >= fence
+
+    store.apply([Fact("task.done", True, Evidence("test-2"))])
+    ready, revision = store.wait_for(
+        {"path": "task.done", "op": "eq", "value": True, "fresh_after": fence},
+        after_revision=fence,
+        timeout=0.01,
+    )
+    assert ready
+    assert revision > fence
