@@ -62,6 +62,7 @@ class WorldStore:
             return fact
 
     def apply(self, facts: Iterable[Fact], *, expected_revision: int | None = None) -> int:
+        facts = list(facts)
         with self._lock:
             if expected_revision is not None and expected_revision != self._revision:
                 raise RevisionConflict(
@@ -80,6 +81,7 @@ class WorldStore:
             return self._revision
 
     def invalidate(self, keys: Iterable[str], *, expected_revision: int | None = None) -> int:
+        keys = list(keys)
         with self._lock:
             if expected_revision is not None and expected_revision != self._revision:
                 raise RevisionConflict(
