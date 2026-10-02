@@ -25,7 +25,7 @@ def request(path: str, op: str, args: dict | None = None) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="WORLDLINE control client")
     parser.add_argument("--socket", default=default_socket())
-    parser.add_argument("op", choices=["hello", "features", "status", "query", "capture", "arm", "wait", "close"])
+    parser.add_argument("op", choices=["hello", "features", "observe", "status", "query", "capture", "arm", "wait", "close"])
     args = parser.parse_args()
     print(json.dumps(request(args.socket, args.op), indent=2, sort_keys=True))
 
