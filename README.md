@@ -255,7 +255,25 @@ worldlinectl --socket /tmp/worldline.sock fence
 9. **No consumer-specific meaning in base truth.**
 10. **No regression disguised as architectural improvement.**
 
-## Cua boundary\n\nWORLDLINE does not drive the desktop. Cua Driver remains the sole GUI actuator; GWCU composes policy and action spans around it. WORLDLINE supplies revisioned evidence, invalidation, fences, waits, and receipts. See [`docs/CUA_INTEGRATION.md`](docs/CUA_INTEGRATION.md).\n\n## Identity and media
+## Operating Fact
+
+An **Operating Fact** is what the desktop can say about itself right now.
+
+It has a **type**, a **present value**, a **revision**, and an **evidence receipt**: where the information came from, when it was observed, and what native source made it knowable.
+
+WORLDLINE joins those facts into a live, queryable view of the machine.
+
+See [`docs/OPERATING_FACT.md`](docs/OPERATING_FACT.md) and [`docs/OBSERVATION_SOURCES.md`](docs/OBSERVATION_SOURCES.md).
+
+## Joining machinery
+
+WORLDLINE is the joining machinery between the desktop systems that already know things: GNOME, Mutter, AT-SPI, PipeWire, system services, logs, state files, and computer-use runtimes.
+
+Observation follows the fact to the place where it naturally exists. A native event can advance a fact immediately; a state file or journal entry can be watched where it is written; a bounded probe can reconcile state when needed. The daemon carries the resulting evidence forward as typed Operating Facts.
+
+The observer is interested in the machine's existing sources of truth. It does not need to become a new pipeline between them.
+
+## Identity and media
 
 The canonical mark and vector media family live in [`assets/brand/`](assets/brand/README.md).
 
