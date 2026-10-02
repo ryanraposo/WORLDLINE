@@ -1,4 +1,4 @@
-![WORLDLINE](assets/brand/vector/worldline-readme-header.svg)
+![WORLDLINE](assets/banner.png)
 
 # WORLDLINE
 
@@ -127,7 +127,7 @@ collectors
 
 ## Platform target
 
-The first serious platform target is **Ubuntu 26.04 LTS · GNOME 50 · Wayland**.
+The first serious platform target is **Ubuntu GNOME Wayland**, with GNOME 50/51 treated as versioned platform adapters rather than assumptions baked into the truth core.
 
 The production collector model composes the desktop interfaces already present on that system:
 
@@ -217,10 +217,11 @@ src/worldline/
   protocol.py       versioned RPC envelope
   daemon.py         Unix-socket daemon
   providers/        observation/capability providers
+    gnome.py        read-only GNOME/Wayland host facts
   consumers/        consumer adapters
 ```
 
-The next work is to deepen the Operating Fact model and wire it to the Ubuntu 26.04 collectors without bloating the core.
+The runtime now has a read-only GNOME provider, real freshness fences, and contingent predicate waits. Cua/GWCU remains the actuation layer; `.gwcu` remains durable machine/workspace truth. The next work is deeper event coverage and typed compositor/media generations without bloating the core.
 
 ## Quick start
 
@@ -237,6 +238,8 @@ From another shell:
 ```bash
 worldlinectl --socket /tmp/worldline.sock status
 worldlinectl --socket /tmp/worldline.sock query
+worldlinectl --socket /tmp/worldline.sock observe
+worldlinectl --socket /tmp/worldline.sock fence
 ```
 
 ## Invariants
@@ -252,7 +255,7 @@ worldlinectl --socket /tmp/worldline.sock query
 9. **No consumer-specific meaning in base truth.**
 10. **No regression disguised as architectural improvement.**
 
-## Identity and media
+## Cua boundary\n\nWORLDLINE does not drive the desktop. Cua Driver remains the sole GUI actuator; GWCU composes policy and action spans around it. WORLDLINE supplies revisioned evidence, invalidation, fences, waits, and receipts. See [`docs/CUA_INTEGRATION.md`](docs/CUA_INTEGRATION.md).\n\n## Identity and media
 
 The canonical mark and vector media family live in [`assets/brand/`](assets/brand/README.md).
 

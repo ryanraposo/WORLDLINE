@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "worldline"
-version = "0.1.0"
+version = "0.2.0"
 description = "Persistent world-model and execution substrate for agents operating a real computer"
 requires-python = ">=3.11"
 authors = [{name = "Ryan Raposo"}]
