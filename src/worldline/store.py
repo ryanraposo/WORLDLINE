@@ -154,8 +154,12 @@ class WorldStore:
                         ready = ready and self._invalidated_at.get(path, 0) > fresh_after
                 elif op == "ne":
                     ready = fact is not None and fact.value != want
+                    if predicate.get("fresh_after") is not None:
+                        ready = ready and self._changed_at.get(path, 0) > fresh_after
                 else:
                     ready = fact is not None and fact.value == want
+                    if predicate.get("fresh_after") is not None:
+                        ready = ready and self._changed_at.get(path, 0) > fresh_after
 
                 if ready:
                     return True, self._revision
