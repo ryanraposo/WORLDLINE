@@ -1,8 +1,8 @@
 name: CI
 
-# WORLDLINE is private. GitHub-hosted runners consume metered Actions
-# minutes; self-hosted runners are free under GitHub's current pricing.
-# Keep the normal PR checks, but never schedule metered GitHub compute.
+# Match the last successful WORLDLINE run (2026-10-02):
+# the standard Ubuntu runner, Python 3.12, and normal pytest.
+# Standard GitHub-hosted minutes are covered by the private repo's plan quota.
 on:
   push:
     branches: [main, dev]
@@ -19,16 +19,12 @@ concurrency:
 
 jobs:
   test:
-    # Do not execute pull requests from forks on a self-hosted machine.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install test dependencies
-        run: python -m pip install -e '.[dev]'
-      - name: Run tests
-        run: python -m pytest -q
+      - run: pip install -e '.[dev]'
+      - run: pytest
