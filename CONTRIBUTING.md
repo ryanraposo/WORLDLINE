@@ -15,20 +15,17 @@ Every behavior change should preserve:
 
 New providers should include deterministic tests with mocked source events. New capabilities should prove failure as well as success; a stale success must not remain green.
 
+## CI verification
 
-## CI checks without GitHub-hosted runner charges
+WORLDLINE runs ordinary pytest via GitHub Actions on `ubuntu-24.04`, Python 3.12. This matches the successful CI run on October 2, 2026 (run 37013757626). No self-hosted runner is needed.
 
-This is a private repository. The `CI` workflow runs on a **self-hosted Linux x64 runner** so it does not consume metered GitHub-hosted runner minutes. GitHub currently makes self-hosted Actions usage free; review GitHub's current pricing before changing this policy.
+For private repositories, standard GitHub-hosted runners draw from the account's included Actions minutes; exceeding the included allowance can require payment. This repository cannot change account-level quotas. Workflow triggers cover pull requests to `dev` and `main` and pushes to integration branches, with cancellation of superseded runs to avoid consuming unnecessary minutes.
 
-Keep the `test` check meaningful: a queued check means no suitable runner is online, **not** that tests passed. Never substitute a skipped job or a success-only status for test execution.
-
-To connect a runner, use this repository's **Settings → Actions → Runners → New self-hosted runner**. Use a dedicated, isolated, least-privilege environment rather than a personal desktop session. The workflow accepts pull requests only when their head originates in this repository and also checks pushes to `dev` and `main`. Forked pull requests are not executed on the private runner.
-
-The same tests can be verified locally without GitHub Actions:
+Run the same tests locally without any GitHub compute:
 
 ```bash
 python3 -m pip install -e '.[dev]'
 python3 -m pytest -q
 ```
 
-**Merge gate:** require a successful, actually executed `test` job on the proposed commit. Do not treat a queued, skipped, or runner-provisioning failure as a green test result.
+**Merge gate:** require the actual `test` job to execute and pass on the proposed revision. A job that fails before any runner is assigned or remains queued is **not** a test failure and is **not** a passing check. Investigate GitHub Actions billing/runner availability rather than altering assertions or inventing green checks.
