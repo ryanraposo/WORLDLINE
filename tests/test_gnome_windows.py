@@ -1,5 +1,6 @@
 import json
 import subprocess
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -106,8 +107,9 @@ def test_generic_query_refresh_updates_and_invalidates_native_snapshot():
             return SimpleNamespace(returncode=0, stdout=dbus_response(payload))
         return SimpleNamespace(returncode=1, stdout="")
     daemon = WorldlineDaemon()
+    payload["observed_at"] = time.time()
     daemon.providers["gnome-windows"] = GNOMEWindowsProvider(
-        runner=runner, clock=lambda: 1000,
+        runner=runner, clock=time.time,
     )
     request = {"op": "query", "args": {"refresh": ["gnome-windows"]}}
     first = daemon.dispatch(request)

@@ -26,8 +26,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="WORLDLINE control client")
     parser.add_argument("--socket", default=default_socket())
     parser.add_argument("op", choices=["hello", "features", "observe", "fence", "status", "query", "capture", "arm", "wait", "close"])
+    parser.add_argument("--provider", default="gnome", help="Provider name for observe")
+    parser.add_argument("--refresh", action="append", metavar="PROVIDER", default=[],
+                        help="For query/capture, freshly sample provider before reading; repeatable")
     args = parser.parse_args()
-    print(json.dumps(request(args.socket, args.op), indent=2, sort_keys=True))
+    if args.refresh and args.op not in ("query", "capture"):
+        parser.error("--refresh is only supported by query and capture")
+    if args.provider != "gnome" and args.op != "observe":
+        parser.error("--provider is only supported by observe")
+    payload = ({"refresh": args.refresh} if args.op in ("query", "capture")
+               else {"provider": args.provider} if args.op == "observe" else {})
+    print(json.dumps(request(args.socket, args.op, payload), indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

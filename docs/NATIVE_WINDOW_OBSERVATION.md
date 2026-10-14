@@ -24,8 +24,10 @@ of GNOME Shell's built-in Introspect service.
 ## Inspecting the present
 
 ```sh
-worldlinectl query                  # cached, validity-filtered facts
-# Explicit fresh read of native window records:
+worldlinectl query                         # cached, validity-filtered facts
+worldlinectl query --refresh gnome-windows # fresh native window observation
+worldlinectl observe --provider gnome-windows
+# Inspect the native observer directly:
 gdbus call --session --dest org.worldline.GnomeObserver \
   --object-path /org/worldline/GnomeObserver \
   --method org.worldline.GnomeObserver1.GetSnapshot
@@ -35,7 +37,7 @@ WORLDLINE protocol consumers should submit
 `{"protocol":1,"op":"query","args":{"refresh":["gnome-windows"]}}`
 to the private Unix socket for a fresh source read followed by the current
 snapshot. `worldlinectl observe` still refreshes the ordinary GNOME host
-provider; `worldlinectl` does not yet expose `refresh` flags.
+provider by default; all providers can be selected explicitly.
 
 Facts:
 
