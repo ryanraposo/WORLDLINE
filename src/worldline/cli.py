@@ -25,17 +25,23 @@ def request(path: str, op: str, args: dict | None = None) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="WORLDLINE control client")
     parser.add_argument("--socket", default=default_socket())
-    parser.add_argument("op", choices=["hello", "features", "observe", "fence", "status", "query", "capture", "arm", "wait", "close"])
+    parser.add_argument("op", choices=["hello", "features", "sources", "observe", "fence", "status", "query", "capture", "arm", "wait", "close"])
     parser.add_argument("--provider", default="gnome", help="Provider name for observe")
+    parser.add_argument("--mode", choices=("fast", "active"), default="active",
+                        help="Fast reads direct sources only; active allows bounded service queries")
     parser.add_argument("--refresh", action="append", metavar="PROVIDER", default=[],
                         help="For query/capture, freshly sample provider before reading; repeatable")
     args = parser.parse_args()
     if args.refresh and args.op not in ("query", "capture"):
         parser.error("--refresh is only supported by query and capture")
+    if args.mode != "active" and args.op not in ("query", "capture", "observe"):
+        parser.error("--mode is only supported by observe/query/capture")
     if args.provider != "gnome" and args.op != "observe":
         parser.error("--provider is only supported by observe")
-    payload = ({"refresh": args.refresh} if args.op in ("query", "capture")
-               else {"provider": args.provider} if args.op == "observe" else {})
+    payload = ({"refresh": args.refresh, "mode": args.mode}
+               if args.op in ("query", "capture")
+               else {"provider": args.provider, "mode": args.mode}
+               if args.op == "observe" else {})
     print(json.dumps(request(args.socket, args.op, payload), indent=2, sort_keys=True))
 
 

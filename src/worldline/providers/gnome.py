@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from time import time
 from typing import Iterable
 
 from worldline.model import Evidence, Fact
+from worldline.sources import SourceSurface
 from .base import ObservationProvider
 
 
@@ -24,10 +26,51 @@ class GNOMEProvider(ObservationProvider):
     """Low-cost GNOME/Wayland host facts; never an actuation path."""
 
     name = "gnome"
+    source_surfaces = (
+        SourceSurface("session-environment", "process environment",
+                      "direct_read", "negligible",
+                      ("gnome.session.*",),
+                      "Reads XDG session values without contacting a service."),
+        SourceSurface("installed-programs", "PATH and filesystem executable metadata",
+                      "direct_read", "negligible",
+                      ("*.installed",),
+                      "Uses shutil.which rather than launching a program."),
+        SourceSurface("program-versions", "installed program --version",
+                      "service_query", "bounded",
+                      ("gnome.shell.version", "gnome.mutter.version",
+                       "media.pipewire.version", "media.wireplumber.version",
+                       "computer_use.cua_driver.version"),
+                      "Runs only when an explicit active sample is requested."),
+        SourceSurface("session-properties", "logind via loginctl",
+                      "service_query", "bounded",
+                      ("gnome.session.active", "gnome.session.locked"),
+                      "Session truth belongs to logind; do not substitute /proc guesses."),
+        SourceSurface("desktop-configuration", "GSettings",
+                      "service_query", "bounded",
+                      ("gnome.settings.color_scheme",)),
+        SourceSurface("accessibility-reachability", "AT-SPI session bus via gdbus",
+                      "service_query", "bounded",
+                      ("gnome.atspi.bus.reachable",),
+                      "A bus introspection proves reachability, not accessible UI content."),
+    )
+
+    def observe_fast(self) -> Iterable[Fact]:
+        """Direct bounded reads only; no shelling out, D-Bus query or service RPC."""
+        return self._collect(active=False)
 
     def observe(self) -> Iterable[Fact]:
+        """Full on-demand sample; external queries have per-command timeouts."""
+        return self._collect(active=True)
+
+    def _collect(self, *, active: bool) -> list[Fact]:
+        sampled_at = time()
+
         def evidence(source: str, detail: dict | None = None) -> Evidence:
-            return Evidence(source=source, detail=detail or {})
+            # Fact observation is not a timeless assertion. Long-lived daemon
+            # snapshots must expire when a host/service might have changed.
+            return Evidence(source=source, observed_at=sampled_at,
+                            expires_at=sampled_at + (30 if active else 10),
+                            detail=detail or {})
 
         facts: list[Fact] = []
         for key, value in {
@@ -51,13 +94,13 @@ class GNOMEProvider(ObservationProvider):
                 fact_key + ".installed", installed,
                 evidence("path", {"command": command}),
             ))
-            if installed:
+            if installed and active:
                 version = _run([command, "--version"])
                 if version:
                     facts.append(Fact(fact_key, version, evidence("command", {"command": command})))
 
         session_id = os.environ.get("XDG_SESSION_ID")
-        if session_id and shutil.which("loginctl"):
+        if active and session_id and shutil.which("loginctl"):
             state = _run([
                 "loginctl", "show-session", session_id,
                 "-p", "Active", "-p", "LockedHint", "--value",
@@ -71,11 +114,14 @@ class GNOMEProvider(ObservationProvider):
                     facts.append(Fact("gnome.session.locked", values[1].lower() == "yes",
                                       evidence("loginctl")))
 
-        if shutil.which("gsettings"):
+        if active and shutil.which("gsettings"):
             scheme = _run(["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"])
             if scheme:
                 facts.append(Fact("gnome.settings.color_scheme", scheme.strip("'"),
                                   evidence("gsettings")))
+
+        if not active:
+            return facts
 
         atspi = (
             _run([

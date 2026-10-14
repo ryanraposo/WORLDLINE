@@ -82,6 +82,46 @@ class WorldStore:
                 self._changed.notify_all()
             return self._revision
 
+    def reconcile(
+        self, facts: Iterable[Fact], *,
+        managed_keys: Iterable[str] = (),
+        expected_revision: int | None = None,
+    ) -> int:
+        """Atomically apply a source sample and withdraw absent source-owned keys.
+
+        An exception while producing the iterable leaves the store unchanged.
+        """
+        incoming = list(facts)
+        keys = [fact.key for fact in incoming]
+        if len(set(keys)) != len(keys):
+            raise ValueError("provider emitted duplicate fact keys")
+        managed = set(managed_keys)
+        if managed and not set(keys).issubset(managed):
+            raise ValueError("provider emitted keys outside its declared ownership")
+        with self._changed:
+            if expected_revision is not None and expected_revision != self._revision:
+                raise RevisionConflict(
+                    f"expected revision {expected_revision}, current revision {self._revision}"
+                )
+            changed = {key for key in managed if key in self._facts and key not in keys}
+            for fact in incoming:
+                if self._facts.get(fact.key) != fact:
+                    changed.add(fact.key)
+            if not changed:
+                return self._revision
+            for key in managed - set(keys):
+                self._facts.pop(key, None)
+            for fact in incoming:
+                self._facts[fact.key] = fact
+            self._revision += 1
+            for key in changed:
+                if key in self._facts:
+                    self._changed_at[key] = self._revision
+                else:
+                    self._invalidated_at[key] = self._revision
+            self._changed.notify_all()
+            return self._revision
+
     def invalidate(self, keys: Iterable[str], *, expected_revision: int | None = None) -> int:
         keys = list(keys)
         with self._lock:

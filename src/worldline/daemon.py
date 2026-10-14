@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+from time import monotonic, time
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .store import WorldStore
 from .providers.gnome import GNOMEProvider
+from .sources import provider_description
 
 
 class WorldlineDaemon:
@@ -18,17 +20,38 @@ class WorldlineDaemon:
         self.store = store or WorldStore()
         self._closing = False
         self.providers = {"gnome": GNOMEProvider()}
+        self.provider_readings: dict[str, dict] = {}
 
-    def _observe_provider(self, provider_name: str) -> tuple[int, int]:
+    def _observe_provider(self, provider_name: str, *, mode: str = "active") -> tuple[int, int]:
         provider = self.providers[provider_name]
-        facts = list(provider.observe())
-        # Source-owned keys missing from the fresh observation are withdrawn.
-        # This is generic: any observer can declare its own ephemeral keys.
-        managed = set(getattr(provider, "managed_keys", ()))
-        present = {fact.key for fact in facts}
-        if managed:
-            self.store.invalidate(managed - present)
-        revision = self.store.apply(facts)
+        if mode not in ("active", "fast"):
+            raise ValueError("unsupported observation mode")
+        read = (getattr(provider, "observe_fast", None)
+                if mode == "fast" else provider.observe)
+        if not callable(read):
+            raise ValueError("provider does not support fast observation")
+        before = monotonic()
+        try:
+            facts = list(read())
+            # Apply a coherent source transaction. A failed read never
+            # withdraws previously valid facts as though the source reported
+            # an empty world.
+            managed = set(getattr(provider, "managed_keys", ()))
+            revision = self.store.reconcile(facts, managed_keys=managed)
+        except Exception as exc:
+            # Diagnostics record the failure category without leaking details
+            # that may contain private command output or file content.
+            self.provider_readings[provider_name] = {
+                "mode": mode, "ok": False, "error_type": type(exc).__name__,
+                "duration_ms": round((monotonic() - before) * 1000, 2),
+                "attempted_at": time(),
+            }
+            raise
+        self.provider_readings[provider_name] = {
+            "mode": mode, "ok": True, "fact_count": len(facts),
+            "duration_ms": round((monotonic() - before) * 1000, 2),
+            "attempted_at": time(), "revision": revision,
+        }
         return revision, len(facts)
 
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
@@ -44,6 +67,15 @@ class WorldlineDaemon:
                 "compatibility": ["embedded-worldline-six-op"],
                 "extension_model": ["providers", "consumers", "facts", "capabilities", "affordances"],
                 "providers": sorted(self.providers),
+                "source_catalog": True,
+                "observation_modes": ["fast", "active"],
+            })
+        if req.op == "sources":
+            return ok(req, {
+                "providers": [provider_description(self.providers[name])
+                              for name in sorted(self.providers)],
+                "last_reads": dict(self.provider_readings),
+                "interpretation": "source observations only; no logical entity associations",
             })
         if req.op == "observe":
             provider_name = str(req.args.get("provider", "gnome"))
@@ -53,11 +85,20 @@ class WorldlineDaemon:
             expected_revision = req.args.get("expected_revision")
             if expected_revision is not None and expected_revision != self.store.revision:
                 return error(req, "revision_conflict", "expected revision does not match")
-            revision, count = self._observe_provider(provider_name)
+            mode = req.args.get("mode", "active")
+            if not isinstance(mode, str) or mode not in ("active", "fast"):
+                return error(req, "invalid_mode", "mode must be active or fast")
+            if mode == "fast" and not callable(getattr(provider, "observe_fast", None)):
+                return error(req, "unsupported_mode", "provider does not offer a direct fast read")
+            try:
+                revision, count = self._observe_provider(provider_name, mode=mode)
+            except Exception:
+                return error(req, "observation_failed", "provider could not complete read")
             return ok(req, {
                 "provider": provider_name,
                 "revision": revision,
                 "fact_count": count,
+                "mode": mode,
             })
         if req.op == "fence":
             revision = self.store.fence()
@@ -74,8 +115,18 @@ class WorldlineDaemon:
             unknown = next((name for name in selected if name not in self.providers), None)
             if unknown is not None:
                 return error(req, "unknown_provider", unknown)
+            mode = req.args.get("mode", "active")
+            if not isinstance(mode, str) or mode not in ("active", "fast"):
+                return error(req, "invalid_mode", "mode must be active or fast")
+            unsupported = next((name for name in selected if mode == "fast"
+                                and not callable(getattr(self.providers[name], "observe_fast", None))), None)
+            if unsupported is not None:
+                return error(req, "unsupported_mode", f"{unsupported} does not offer a direct fast read")
             for name in dict.fromkeys(selected):
-                self._observe_provider(name)
+                try:
+                    self._observe_provider(name, mode=mode)
+                except Exception:
+                    return error(req, "observation_failed", f"{name} could not complete read")
             return ok(req, self.store.snapshot().to_dict())
         if req.op == "event":
             key = str(req.args["key"])
