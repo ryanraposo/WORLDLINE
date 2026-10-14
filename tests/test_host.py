@@ -63,7 +63,10 @@ def test_host_source_accepts_no_unbounded_or_private_data(tmp_path):
 
 def test_provider_available_via_fast_query_only_when_requested(tmp_path):
     daemon = WorldlineDaemon()
-    daemon.providers["host"] = fixture(tmp_path)
+    import time
+    host = fixture(tmp_path)
+    host.clock = time.time
+    daemon.providers["host"] = host
     untouched = daemon.dispatch({"op": "query", "args": {}})
     assert "host.memory.total_kib" not in untouched["result"]["facts"]
     result = daemon.dispatch({"op": "query", "args": {
