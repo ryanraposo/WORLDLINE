@@ -28,6 +28,8 @@ accessible in the current session.
 | **Windows and workspaces** | Mutter ID and generation, app ID, frame, focus, workspace, monitor, stacking, transient-parent, minimization and compositor visibility | Existing GNOME/Cua observation interface **requires contract verification**; no additional Shell extension |
 | **Shell and spatial stage** | Stage extents, transformed actor bounds, monitor scale/rotation, screenshot coordinates, occluded visible regions, pointer hit-test surface | Existing compositor integration and Cua **requires contract verification**; raw connector cable state is *not* stage geometry |
 | **Accessible interaction** | Accessible element roles, names, bounds, action availability, focus, state changes, hierarchy and navigation | AT-SPI2 **available source**; session bus reachability **implemented**, not semantic access |
+| **Manifestation and physical embodiment** | Rendered-surface availability, source-reported body pose/position, contact with surfaces, presentation completion, movement events and interaction hit regions | Native UI rendering/compositor and the owning physical runtime **available source / consumer-defined projection**; WORLDLINE does **not** define which surfaces constitute one body |
+| **Interaction history and causality** | Observed input event, action acknowledgement, permission gate, native state transition, outcome evidence, sequence/correlation IDs | Existing control runtime receipts, source logs and WORLDLINE revision fences **available source / partial implementation**; avoid copying private full action transcripts |
 | **Input and attention** | Focus owner, keyboard layout, pointing-device presence, pointer position when available, lock/idle/inhibitors, ongoing user activity | GNOME/Cua, logind, input services **available source**; minimize user activity detail |
 | **Media and audio** | Output/input endpoint inventory, stream existence, application routing, playback/capture state, mute/volume and generation | PipeWire/WirePlumber metadata **available source**; detailed media payload requires separate authority |
 | **Camera and sensing** | Device present, permissions, active authorized capture, stream format and frame time; image content only with authorization | V4L2, PipeWire, portals **available source / requires consent** |
@@ -45,6 +47,39 @@ accessible in the current session.
 | **Policies and permissions** | Session lock, access granted/denied, portal capabilities, active input/capture lease, approval status | logind, portal and runtime state **available source**; permissions are not replaced by world observations |
 | **Tools and capabilities** | Actual installed capabilities, health, permission, runtime-version, supported action schema | Source/service capability APIs **available source**; PATH presence **implemented** as presence only |
 | **Outcomes and events** | Acknowledgement, observed change, result, timeout, partial completion, fresh evidence after fence | WORLDLINE revision/fence/wait **implemented**; concrete effect remains sourced to the executor/observer |
+
+## What it means for an agent to inhabit this world
+
+An agent may recognize its own presentation window, interactive overlay,
+body renderer, web manifestation or phone surface from **its own repository's
+identity and metadata**. WORLDLINE sees the ordinary source observations
+those surfaces provide. It does not tell an agent which objects are *it*,
+which belong together, or what their relationships mean.
+
+The environment around that agent includes other windows, spatial support,
+focus and user attention, device readiness, applications, sounds and media,
+foreground changes, running jobs, input permissions, service health, time,
+hardware pressure, connectivity and authorized information surfaces.
+
+The agent can compare its own source-reported pose/visibility against OS
+window geometry and input observations; the interpretation of "I am behind
+that window", "I can stand there", "you are talking to me", or "my action
+worked" happens in the consuming intelligence or its owned physical
+machinery, **not** in WORLDLINE. The underlying facts remain separable and
+independently inspectable.
+
+There are three distinct worlds in practice:
+
+1. **Native physical/operational truth:** measurable processes, devices,
+   window/actor coordinates, actual movement, service and permission state.
+2. **Perceived content:** images, text, speech, semantic accessibility and
+   documents, only as actually exposed by a source and with appropriate
+   permissions.
+3. **Consumer interpretation and intention:** object meaning, self, identity,
+   goals, memories, inferred affordances and relationships. Consumers own it.
+
+This separation permits sophisticated reasoning without turning the
+observation engine into a domain-specific ontology.
 
 ## Source selection: the least costly *authoritative* evidence
 
