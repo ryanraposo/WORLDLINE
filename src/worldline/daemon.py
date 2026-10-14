@@ -14,6 +14,7 @@ from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .store import WorldStore
 from .providers.gnome import GNOMEProvider
+from .providers.host import HostRuntimeProvider
 from .sources import provider_description
 
 
@@ -21,7 +22,7 @@ class WorldlineDaemon:
     def __init__(self, store: WorldStore | None = None) -> None:
         self.store = store or WorldStore()
         self._closing = False
-        self.providers = {"gnome": GNOMEProvider()}
+        self.providers = {"gnome": GNOMEProvider(), "host": HostRuntimeProvider()}
         self.provider_readings: dict[str, dict] = {}
         self._provider_guards = defaultdict(Lock)
         self._blocking_slots = asyncio.Semaphore(4)

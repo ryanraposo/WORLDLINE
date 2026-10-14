@@ -141,6 +141,18 @@ daemon's cached state queries. Observation collections are atomic; failed
 reads cannot silently erase earlier evidence. Neither polling nor an
 additional compositor extension is introduced by this facility.
 
+## Host capacity, device and display evidence
+
+The lightweight `host` provider reads bounded kernel surfaces for memory
+availability, load averages, uptime, battery/power-source attributes, and
+DRM connector cable state. It reads **no** app content, private device serial
+numbers or compositor geometry, and starts **no** background polling. Invoke
+`worldlinectl query --refresh host --mode fast` when those facts are needed.
+
+The broader [Inhabited World Atlas](docs/INHABITED_WORLD.md) inventories the
+other observations relevant to situated agents, explicitly separating
+implemented facts from source-backed integration opportunities.
+
 ## Desktop observations
 
 WORLDLINE can ingest source-reported native facts and explicit links from
