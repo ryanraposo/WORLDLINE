@@ -103,3 +103,36 @@ def test_observe_fast_tracks_duration_and_revisions():
     recorded = sources["last_reads"][observer.name]
     assert recorded["ok"] and recorded["mode"] == "fast"
     assert recorded["duration_ms"] >= 0
+
+
+def test_reader_failure_does_not_invalidate_previously_collected_evidence():
+    daemon = WorldlineDaemon()
+    observer = FastObserver()
+    daemon.providers[observer.name] = observer
+    first = daemon.dispatch({"op": "observe", "args": {"provider": observer.name}})
+    assert first["ok"]
+    def broken():
+        raise RuntimeError("source temporarily unavailable")
+    observer.observe = broken
+    failure = daemon.dispatch({"op": "observe", "args": {"provider": observer.name}})
+    assert not failure["ok"]
+    assert failure["error"]["code"] == "observation_failed"
+    cached = daemon.dispatch({"op": "query", "args": {}})
+    assert cached["result"]["facts"]["test.a"]["value"] == 1
+    status = daemon.dispatch({"op": "sources", "args": {}})["result"]["last_reads"][observer.name]
+    assert status["ok"] is False and status["error_type"] == "RuntimeError"
+
+
+def test_native_stale_read_is_not_implicitly_replayed_for_post_fence_refresh():
+    daemon = WorldlineDaemon()
+    observer = FastObserver()
+    daemon.providers[observer.name] = observer
+    daemon.dispatch({"op": "observe", "args": {"provider": observer.name, "mode": "fast"}})
+    revision = daemon.dispatch({"op": "fence", "args": {}})["result"]["revision"]
+    observer.facts = [Fact("test.a", 1, Evidence("native-new"))]
+    result = daemon.dispatch({"op": "query", "args": {
+        "refresh": [observer.name], "mode": "fast",
+    }})
+    assert result["ok"]
+    assert result["result"]["revision"] > revision
+    assert observer.calls == ["fast", "fast"]

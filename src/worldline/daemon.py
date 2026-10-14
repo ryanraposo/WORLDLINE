@@ -4,6 +4,8 @@ import argparse
 import asyncio
 import json
 import os
+from collections import defaultdict
+from threading import Lock
 from time import monotonic, time
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,8 @@ class WorldlineDaemon:
         self._closing = False
         self.providers = {"gnome": GNOMEProvider()}
         self.provider_readings: dict[str, dict] = {}
+        self._provider_guards = defaultdict(Lock)
+        self._blocking_slots = asyncio.Semaphore(4)
 
     def _observe_provider(self, provider_name: str, *, mode: str = "active") -> tuple[int, int]:
         provider = self.providers[provider_name]
@@ -30,29 +34,32 @@ class WorldlineDaemon:
                 if mode == "fast" else provider.observe)
         if not callable(read):
             raise ValueError("provider does not support fast observation")
-        before = monotonic()
-        try:
-            facts = list(read())
-            # Apply a coherent source transaction. A failed read never
-            # withdraws previously valid facts as though the source reported
-            # an empty world.
-            managed = set(getattr(provider, "managed_keys", ()))
-            revision = self.store.reconcile(facts, managed_keys=managed)
-        except Exception as exc:
-            # Diagnostics record the failure category without leaking details
-            # that may contain private command output or file content.
+        # Avoid overlapping slow reads of the same native producer. Refreshes
+        # still take new samples; we do not silently reuse pre-fence evidence.
+        with self._provider_guards[provider_name]:
+            before = monotonic()
+            try:
+                facts = list(read())
+                # Apply a coherent source transaction. A failed read never
+                # withdraws previously valid facts as though the source reported
+                # an empty world.
+                managed = set(getattr(provider, "managed_keys", ()))
+                revision = self.store.reconcile(facts, managed_keys=managed)
+            except Exception as exc:
+                # Diagnostics record the failure category without leaking details
+                # that may contain private command output or file content.
+                self.provider_readings[provider_name] = {
+                    "mode": mode, "ok": False, "error_type": type(exc).__name__,
+                    "duration_ms": round((monotonic() - before) * 1000, 2),
+                    "attempted_at": time(),
+                }
+                raise
             self.provider_readings[provider_name] = {
-                "mode": mode, "ok": False, "error_type": type(exc).__name__,
+                "mode": mode, "ok": True, "fact_count": len(facts),
                 "duration_ms": round((monotonic() - before) * 1000, 2),
-                "attempted_at": time(),
+                "attempted_at": time(), "revision": revision,
             }
-            raise
-        self.provider_readings[provider_name] = {
-            "mode": mode, "ok": True, "fact_count": len(facts),
-            "duration_ms": round((monotonic() - before) * 1000, 2),
-            "attempted_at": time(), "revision": revision,
-        }
-        return revision, len(facts)
+            return revision, len(facts)
 
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
         req = Request.from_dict(raw)
@@ -178,7 +185,20 @@ class WorldlineDaemon:
                     break
                 try:
                     raw = json.loads(line)
-                    response = self.dispatch(raw)
+                    op = raw.get("op") if isinstance(raw, dict) else None
+                    args = raw.get("args") if isinstance(raw, dict) else None
+                    blocking = (
+                        op in {"observe", "wait"} or
+                        (op in {"query", "capture"} and
+                         isinstance(args, dict) and bool(args.get("refresh")))
+                    )
+                    if blocking:
+                        # Service/CLI probes and condition waits must never
+                        # stall cached query/status/hello clients on the loop.
+                        async with self._blocking_slots:
+                            response = await asyncio.to_thread(self.dispatch, raw)
+                    else:
+                        response = self.dispatch(raw)
                 except Exception as exc:  # boundary: never tear down daemon on malformed request
                     response = {"ok": False, "protocol": PROTOCOL_VERSION,
                                 "error": {"code": "bad_request", "message": str(exc)}}
