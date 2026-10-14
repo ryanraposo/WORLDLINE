@@ -1,0 +1,11 @@
+{
+  "uuid": "window-observer@worldline.local",
+  "name": "WORLDLINE Window Observer",
+  "description": "Read-only GNOME Shell window and actor observations over session D-Bus.",
+  "shell-version": [
+    "49",
+    "50",
+    "51"
+  ],
+  "version": 1
+}

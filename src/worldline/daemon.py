@@ -11,13 +11,26 @@ from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .store import WorldStore
 from .providers.gnome import GNOMEProvider
+from .providers.gnome_windows import GNOMEWindowsProvider
 
 
 class WorldlineDaemon:
     def __init__(self, store: WorldStore | None = None) -> None:
         self.store = store or WorldStore()
         self._closing = False
-        self.providers = {"gnome": GNOMEProvider()}
+        self.providers = {"gnome": GNOMEProvider(), "gnome-windows": GNOMEWindowsProvider()}
+
+    def _observe_provider(self, provider_name: str) -> tuple[int, int]:
+        provider = self.providers[provider_name]
+        facts = list(provider.observe())
+        # Source-owned keys missing from the fresh observation are withdrawn.
+        # This is generic: any observer can declare its own ephemeral keys.
+        managed = set(getattr(provider, "managed_keys", ()))
+        present = {fact.key for fact in facts}
+        if managed:
+            self.store.invalidate(managed - present)
+        revision = self.store.apply(facts)
+        return revision, len(facts)
 
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
         req = Request.from_dict(raw)
@@ -38,12 +51,14 @@ class WorldlineDaemon:
             provider = self.providers.get(provider_name)
             if provider is None:
                 return error(req, "unknown_provider", provider_name)
-            facts = list(provider.observe())
-            revision = self.store.apply(facts, expected_revision=req.args.get("expected_revision"))
+            expected_revision = req.args.get("expected_revision")
+            if expected_revision is not None and expected_revision != self.store.revision:
+                return error(req, "revision_conflict", "expected revision does not match")
+            revision, count = self._observe_provider(provider_name)
             return ok(req, {
                 "provider": provider_name,
                 "revision": revision,
-                "fact_count": len(facts),
+                "fact_count": count,
             })
         if req.op == "fence":
             revision = self.store.fence()
@@ -52,6 +67,16 @@ class WorldlineDaemon:
             snap = self.store.snapshot()
             return ok(req, {"revision": snap.revision, "fact_count": len(snap.facts)})
         if req.op in {"query", "capture"}:
+            selected = req.args.get("refresh", [])
+            if not isinstance(selected, list) or len(selected) > 8 or any(
+                not isinstance(name, str) for name in selected
+            ):
+                return error(req, "invalid_refresh", "refresh must be a provider name list")
+            unknown = next((name for name in selected if name not in self.providers), None)
+            if unknown is not None:
+                return error(req, "unknown_provider", unknown)
+            for name in dict.fromkeys(selected):
+                self._observe_provider(name)
             return ok(req, self.store.snapshot().to_dict())
         if req.op == "event":
             key = str(req.args["key"])

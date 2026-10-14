@@ -140,6 +140,9 @@ class WorldStore:
                     return False, self._revision
 
                 fact = self._facts.get(path)
+                # Expired operating facts are no longer valid postconditions.
+                if fact is not None and not fact.evidence.valid_at():
+                    fact = None
                 if op == "changed":
                     ready = self._changed_at.get(path, 0) > fresh_after
                 elif op == "invalid":

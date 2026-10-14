@@ -58,3 +58,14 @@ def test_fresh_wait_accepts_new_evidence_for_equality():
     )
     assert ready
     assert revision > fence
+
+def test_expired_fact_cannot_satisfy_wait_postcondition():
+    store = WorldStore()
+    store.apply([Fact("gnome.windows.source.available", True, Evidence(
+        "test", expires_at=1,
+    ))])
+    ready, _revision = store.wait_for(
+        {"path": "gnome.windows.source.available", "op": "eq", "value": True},
+        after_revision=0, timeout=0.01,
+    )
+    assert not ready
