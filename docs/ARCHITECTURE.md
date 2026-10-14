@@ -14,7 +14,7 @@ Observation normalization
 Revisioned WorldStore ──────► subscriptions / snapshots / query
     │
     ├── capability readiness
-    ├── relationships
+    ├── native links + correspondence evidence
     └── affordance evidence
     │
     ▼
@@ -26,15 +26,20 @@ Actuation providers
 
 ## Consumers
 
-### Hermes
+WORLDLINE publishes source-observed facts, native links, correspondence
+coordinates, provenance, revisions and expiry. The source may explicitly
+report a native link (for example, the transient parent of a window); such
+a link remains an observation with a source receipt.
 
-Hermes remains responsible for conversation, memory, tools, approvals, intent and execution lifecycle. WORLDLINE supplies durable machine truth, capability readiness, receipts and conflicts.
+**A matching process ID, application ID, title, coordinate or geometric
+overlap never causes WORLDLINE to declare two objects members of one logical
+entity.** Any such assertion, including self-identification and ownership
+of multiple interfaces, belongs entirely to a downstream interpreter.
 
-### Horner
-
-Horner remains responsible for identity, embodiment, performance and character. WORLDLINE supplies canonical desktop geometry/state and evidence from which Horner can derive walkable surfaces, grips, hazards, visibility, attention targets and other embodied affordances.
-
-Neither consumer becomes WORLDLINE's privileged ontology.
+Consumer projections are defined and maintained by their consumers;
+WORLDLINE does not ship named adapters or identity policies. Consumers can
+correlate sources across a common revision and refresh evidence at the source
+when correspondence is uncertain.
 
 ## State mutation
 

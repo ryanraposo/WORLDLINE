@@ -22,7 +22,9 @@ Describes whether a capability exists and, optionally, how to acquire/repair it 
 
 ### Consumer adapter
 
-Projects canonical truth into the vocabulary needed by an agent. Hermes and Horner are initial adapters, not special cases in the store.
+Projects canonical truth into a consumer's own vocabulary. Such adapters
+are implemented in the consumer's repository; the core exports only the
+generic adapter contract and source-observed facts.
 
 ### Affordance namespace
 
@@ -31,8 +33,8 @@ Consumers may publish or derive namespaced affordances:
 ```text
 web.can_click
 system.can_focus
-horner.can_stand
-horner.can_grip
+surface.can_stand
+surface.can_grip
 robot.can_reach
 ```
 
