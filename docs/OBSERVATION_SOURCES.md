@@ -4,6 +4,55 @@ WORLDLINE observes the machine through the places where the machine already know
 
 The observation architecture is **event-driven first, source-local, and reconcilable**.
 
+## Choose the truthful observation path
+
+A source-aware observation plan distinguishes:
+
+| Mechanism | Typical source | Characteristics |
+| --- | --- | --- |
+| Native event or subscription | D-Bus signals, AT-SPI, kernel/filesystem notifications | Prefer when the producer announces changes; reconcile missed events and source restarts. |
+| Direct authoritative read | environment, `/proc`, `/sys`, known state/config files, exposed shared metadata | Read boundedly when the same fact is accessible without asking another service. |
+| Existing read-only runtime interface | native properties, Cua observation, PipeWire and GNOME interfaces | Use the established producer's observation API when it alone owns the answer. |
+| Bounded service query | `loginctl`, GSettings, D-Bus request/reply | Necessary when the service's internal state is not equivalently available elsewhere; request explicitly or on reconciliation, with deadlines. |
+| Privileged native observer | OS-supported, approved restricted introspection | Only with explicit authority, evidence receipts and resource budgets; not a default process-memory scan. |
+
+**Source access is not equivalent to response equivalence.** A PID found in
+`/proc` cannot by itself answer whether a desktop window has focus. An
+installed binary is not a healthy service. Information must be sufficiently
+authoritative, current and complete for the exact fact being asserted.
+
+The `sources` protocol operation and `worldlinectl sources` report only
+**implemented acquisition paths**, their cost classes and previous read
+timing. In the current GNOME provider, `fast` reads environment and PATH
+metadata without a subprocess; `active` additionally uses bounded native
+queries for session, accessibility reachability, program versions and
+settings. Other providers advertise fast mode only when implemented.
+
+```text
+source discovery (no reads)
+           |
+           v
+  choose needed evidence
+           |
+    native/cached valid?
+     /            \\
+   yes             no
+    |               |
+  consume    bounded existing-source read
+    |               |
+    +------ receipt / expiry ----+
+                  |
+            revisioned fact
+                  |
+           consumer interpretation
+```
+
+At idle, cached queries require no probes. Fresh sample requests read only
+explicitly selected providers, never an all-systems scan. Slow observations
+and wait predicates cannot monopolize the protocol event loop. Source reads
+are serialized per provider to avoid overlapping reads; the fact update and
+withdrawal are one atomic store operation.
+
 ## Native events
 
 Examples include:

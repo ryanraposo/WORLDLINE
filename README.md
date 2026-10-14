@@ -120,6 +120,27 @@ A bounded reconciliation can refresh a source when needed.
 
 The daemon joins these observations into the current.
 
+## Source-aware observations
+
+WORLDLINE reads native information **where the authoritative system already
+exposes it**, using fast direct reads when possible and bounded source queries
+when necessary. The [source catalogue](docs/OBSERVATION_SOURCES.md) states
+which actual interfaces each provider uses, their cost class and acquisition
+method. It does not invent access to internal service state.
+
+```sh
+worldlinectl sources                  # catalogue + previous read timing
+worldlinectl observe --mode fast      # environment/PATH; no service call
+worldlinectl query --refresh gnome --mode fast
+worldlinectl observe --mode active    # optional bounded source queries
+worldlinectl query                    # cached valid observations; no probing
+```
+
+Source reads and waits use bounded workers so slow services cannot block the
+daemon's cached state queries. Observation collections are atomic; failed
+reads cannot silently erase earlier evidence. Neither polling nor an
+additional compositor extension is introduced by this facility.
+
 ## Desktop observations
 
 WORLDLINE can ingest source-reported native facts and explicit links from

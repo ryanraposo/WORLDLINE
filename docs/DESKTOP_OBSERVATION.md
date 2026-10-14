@@ -49,3 +49,30 @@ and keep OS identifiers scoped to the source and compositor generation.
 A generic provider is justified only when it can satisfy this acceptance
 with real source evidence. Until then WORLDLINE retains its honest host
 facts and the generic refresh/expiry plumbing, not a fabricated window source.
+
+## Costed acquisition, not duplicate instrumentation
+
+The generic `sources` catalogue describes the observation paths actually
+implemented by providers. It is an *acquisition plan*, not another agent
+semantic model. Low-cost direct reads can supply OS facts without incurring
+normal request/reply work, but only when they are equally authoritative.
+Keep the information a service alone possesses behind its established,
+read-only native API. Subscribe to native changes rather than busy-poll
+where that interface exists.
+
+A source's absence is not a negative observation about every entity the
+source would normally expose. A timeout, a compositor generation change,
+or inaccessible AT-SPI is uncertainty and expires earlier evidence.
+
+```sh
+worldlinectl sources
+worldlinectl observe --mode fast
+worldlinectl observe --mode active
+worldlinectl query --refresh gnome --mode fast
+```
+
+No WORLDLINE code should require installing or developing another GNOME
+Shell extension; no source catalog entry should assert an unverified
+window-inspection API. The current implementation only observes verified
+host facts; native window inspection remains contingent on a supported
+existing source being demonstrated on the target GNOME session.
