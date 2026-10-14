@@ -120,14 +120,21 @@ A bounded reconciliation can refresh a source when needed.
 
 The daemon joins these observations into the current.
 
-## Native window observations
+## Desktop observations
 
-The optional [GNOME Shell window observer](docs/NATIVE_WINDOW_OBSERVATION.md)
-exposes source-reported compositor window properties, actor correspondence,
-and native transient-for references via a **read-only** D-Bus interface.
-WORLDLINE preserves what the source reports, including generation and
-evidence; it never infers application identity, logical group membership, or
-consumer-specific relationships. Consumers make those interpretations.
+WORLDLINE can ingest source-reported native facts and explicit links from
+existing desktop observation infrastructure. In GNOME/Wayland setups, the
+maintained computer-use driver and native GNOME / AT-SPI interfaces are the
+places to seek window, focus, actor and accessibility evidence.
+
+No additional GNOME Shell extension or alternate desktop control plane is
+installed by WORLDLINE. Without an available source, WORLDLINE reports
+unknown or unavailable rather than manufacturing a window inventory.
+
+Applications and agents decide their own identity and what correspondences
+mean; WORLDLINE records facts, native links, timestamps, and provenance only.
+
+See [Desktop observation boundaries](docs/DESKTOP_OBSERVATION.md).
 
 ## Current platform
 

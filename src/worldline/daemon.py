@@ -11,14 +11,13 @@ from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .store import WorldStore
 from .providers.gnome import GNOMEProvider
-from .providers.gnome_windows import GNOMEWindowsProvider
 
 
 class WorldlineDaemon:
     def __init__(self, store: WorldStore | None = None) -> None:
         self.store = store or WorldStore()
         self._closing = False
-        self.providers = {"gnome": GNOMEProvider(), "gnome-windows": GNOMEWindowsProvider()}
+        self.providers = {"gnome": GNOMEProvider()}
 
     def _observe_provider(self, provider_name: str) -> tuple[int, int]:
         provider = self.providers[provider_name]
