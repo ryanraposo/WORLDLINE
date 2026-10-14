@@ -4,6 +4,12 @@ WORLDLINE observes the machine through the places where the machine already know
 
 The observation architecture is **event-driven first, source-local, and reconcilable**.
 
+See the [Inhabited World Atlas](INHABITED_WORLD.md) for the wider source
+coverage map, including desktop, physical environment, attention, services,
+devices, media, compute, applications, time and interaction. That atlas
+separates **implemented** observations from capability opportunities; the
+live source catalogue does not advertise unimplemented interfaces.
+
 ## Choose the truthful observation path
 
 A source-aware observation plan distinguishes:
