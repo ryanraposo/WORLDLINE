@@ -120,6 +120,73 @@ A bounded reconciliation can refresh a source when needed.
 
 The daemon joins these observations into the current.
 
+## Observe now
+
+The `worldline` command is a one-shot observation client. It collects only the
+sections a query needs, returns compact JSON, and exits.
+
+```bash
+worldline                          # the whole current world
+worldline os.kernel                # one fact
+worldline windows.active           # the active window
+worldline windows.active.geometry  # its frame, screen, monitor and exposure
+worldline storage.0.percent        # list index
+worldline storage[0].percent       # equivalent bracket form
+worldline storage.*.percent        # wildcard
+worldline host os storage.0        # several facts in one object
+worldline --list                   # every section
+worldline --pretty windows         # indented JSON
+worldline --all processes          # include full process list
+```
+
+`stdout` is JSON. Errors are JSON on `stderr`: exit `1` means the path does not
+exist, exit `2` means the request itself is invalid.
+
+### What it knows
+
+| Section | Operating facts |
+| --- | --- |
+| **`time`** | epoch · ISO · timezone · UTC offset |
+| **`host`** | hostname · machine/boot id · uptime · hardware · GPUs · virtualization · container |
+| **`os`** | distro · version · kernel · arch · libc · Python · locale |
+| **`cpu`** | model · sockets · physical/logical cores · frequency · load · run queue |
+| **`pressure`** | kernel PSI for CPU · memory · I/O |
+| **`memory`** | RAM · swap · usage · cache · dirty pages |
+| **`storage`** | mounts · type · options · bytes · percent used |
+| **`network`** | interfaces · addresses · stats · routes · DNS · listeners |
+| **`session`** | user · uid/gid · home · shell · session/seat · display · cgroup · safe env |
+| **`desktop`** | session type · desktop · compositor · screen · logical monitors · a11y bus |
+| **`windows`** | app · title · role · frame · monitor · on-screen/offscreen/visible rects · scale · stacking exposure · active · focused · maximized · minimized · modal |
+| **`processes`** | count · threads · top-by-RSS · optional full list |
+| **`power`** | AC · batteries · charge · runtime estimate · max thermal zone |
+| **`audio`** | default sink/source · volume · mute |
+| **`cwd`** | path · writability · device/inode · git root/branch/HEAD |
+| **`tools`** | resolved path for each common CLI tool |
+
+Every source reports whether it was available and why. Missing evidence is
+reported as missing; it is not replaced with a plausible value.
+
+### Window geometry
+
+AT-SPI supplies semantic window identity: application, title, role, focus,
+modal, maximized and minimized state. The Cua `org.cua.WinRects` GNOME Shell
+helper supplies compositor frames and bottom-to-top stacking. The two views are
+joined by process, title and frame overlap; compositor geometry is authoritative
+when both exist, and each item records which source supplied its geometry.
+
+Each window carries:
+
+- `frame` in desktop logical pixels, plus size, area, center and aspect ratio
+- `screen` and the clipped `visible_rect`, `visible_area` and `visible_fraction`
+- `offscreen` edges and `fully_on_screen`
+- `monitor`, `monitor_relative`, `device_pixels` and per-monitor intersections
+- `exposure` computed from higher windows in stacking order, with
+  `occlusion_known` distinguishing proven exposure from unknown stacking
+- `sources` and `geometry_source` for provenance
+
+Occlusion is a frame-rectangle model. It does not claim pixel-perfect visibility
+through transparent or irregular window regions.
+
 ## Ubuntu 26.04 LTS — platform iteration
 
 Ubuntu 26.04 LTS on GNOME/Wayland is the target for this documented platform iteration. The existing GNOME provider emits environment, installed-command, version, session, settings and AT-SPI bus-reachability facts. The hero is a schematic example of those fact types, not a captured runtime session.
@@ -203,6 +270,11 @@ src/worldline/
   transactions.py   pre/postcondition primitives
   protocol.py       versioned RPC envelope
   daemon.py         observation daemon
+  observe.py        one-shot observation pipeline
+  query.py          dot/bracket/wildcard path queries
+  window_geometry.py frame, monitor and stacking geometry
+  cli.py            one-shot observation CLI
+  control.py        daemon control client
   providers/        observation providers
     gnome.py        GNOME / Wayland host facts
   consumers/        consumer adapters
@@ -215,7 +287,15 @@ python -m venv .venv
 . .venv/bin/activate
 pip install -e '.[dev]'
 pytest
-worldline --socket /tmp/worldline.sock
+
+worldline os.kernel
+worldline windows.active.geometry
+```
+
+The persistent daemon and its control client are separate:
+
+```bash
+worldline-daemon --socket /tmp/worldline.sock
 ```
 
 From another shell:

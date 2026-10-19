@@ -14,8 +14,9 @@ dependencies = []
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-worldline = "worldline.daemon:main"
-worldlinectl = "worldline.cli:main"
+worldline = "worldline.cli:main"
+worldline-daemon = "worldline.daemon:main"
+worldlinectl = "worldline.control:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
