@@ -1,4 +1,6 @@
-# GNOME / Wayland platform model
+# WORLDLINE: Operating Fact.
+
+GNOME / Wayland platform model
 
 GNOME 51 is the current stable GNOME line. Ubuntu 26.04 remains a distinct distribution target with its own GNOME/Mutter version, so WORLDLINE records the runtime instead of assuming a major version.
 

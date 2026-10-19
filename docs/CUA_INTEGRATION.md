@@ -1,4 +1,6 @@
-# Cua / GWCU integration
+# WORLDLINE: Operating Fact.
+
+Cua / GWCU integration
 
 WORLDLINE is the **truth and contingent-continuation layer** around a computer-use system.
 

@@ -35,6 +35,7 @@ def atspi_window(**overrides):
         "focused": False,
         "maximized": False,
         "minimized": False,
+        "shaded": False,
         "modal": False,
         "source": "at-spi2",
     }
@@ -101,6 +102,12 @@ def test_merge_prefers_compositor_geometry_and_keeps_semantics(monkeypatch):
     assert item["active"] is True
     assert item["sources"] == ["at-spi2", "org.cua.WinRects"]
     assert item["geometry_source"] == "org.cua.WinRects"
+    assert item["status"] == "verified"
+    assert item["match"]["method"] == "pid_title"
+    assert item["match"]["pid_match"] is True
+    assert item["match"]["title_match"] == "exact"
+    assert item["match"]["frame_overlap"] == 0.0
+    assert item["confidence"] >= 0.95
     assert item["x"] == 415 and item["width"] == 1090
 
     geometry = item["geometry"]
@@ -201,6 +208,270 @@ def test_compositor_only_uses_stacking_for_exposure(monkeypatch):
     assert top["geometry"]["exposure"]["exposed_fraction"] == 1.0
     assert bottom["geometry"]["exposure"]["topmost"] is False
     assert bottom["geometry"]["exposure"]["exposed_fraction"] == 0.5
+
+
+def test_stale_atspi_frame_is_deduplicated_with_reason(monkeypatch):
+    stale = atspi_window(
+        pid=77,
+        app="gjs",
+        title="",
+        role="window",
+        frame=rect(-99, -99, 1, 1),
+        active=False,
+        focused=False,
+        states=["showing", "visible"],
+    )
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": True,
+            "count": 2,
+            "items": [atspi_window(), stale],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 1,
+            "items": [compositor_window()],
+        },
+    )
+    world = _windows()
+    assert world["count"] == 1
+    assert world["counts"] == {
+        "canonical": 1,
+        "semantic": 2,
+        "geometry": 1,
+        "verified": 1,
+        "semantic_only": 0,
+        "geometry_only": 0,
+        "deduplicated": 1,
+        "stale": 1,
+        "duplicate": 0,
+    }
+    assert [item["title"] for item in world["items"]] == ["ChatGPT"]
+    assert len(world["deduplicated"]) == 1
+    dropped = world["deduplicated"][0]
+    assert dropped["title"] == ""
+    assert dropped["sources"] == ["at-spi2"]
+    assert dropped["frame"] == rect(-99, -99, 1, 1)
+    assert dropped["status"] == "stale"
+    assert "degenerate off-screen frame" in dropped["reason"]
+    assert dropped["match"]["band"] == "stale"
+    assert dropped["confidence"] < 0.1
+
+
+def test_duplicate_semantic_frame_is_reported_not_counted(monkeypatch):
+    duplicate = atspi_window(
+        role="window",
+        frame=rect(415, 176, 1090, 760),
+        active=False,
+        focused=False,
+    )
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": True,
+            "count": 2,
+            "items": [atspi_window(), duplicate],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 1,
+            "items": [compositor_window()],
+        },
+    )
+    world = _windows()
+    assert world["count"] == 1
+    assert world["counts"]["duplicate"] == 1
+    dropped = world["deduplicated"][0]
+    assert dropped["status"] == "duplicate"
+    assert dropped["title"] == "ChatGPT"
+    assert dropped["sources"] == ["at-spi2"]
+    assert "window:42:7" in dropped["reason"]
+
+
+def test_plausible_atspi_only_window_stays_canonical(monkeypatch):
+    popup = atspi_window(
+        pid=99,
+        app="helper",
+        title="Preferences",
+        role="dialog",
+        frame=rect(700, 300, 400, 300),
+        active=False,
+        focused=False,
+    )
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": True,
+            "count": 1,
+            "items": [popup],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 1,
+            "items": [compositor_window()],
+        },
+    )
+    world = _windows()
+    assert world["count"] == 2
+    assert world["counts"]["semantic_only"] == 1
+    assert world["counts"]["geometry_only"] == 1
+    assert world["deduplicated"] == []
+
+    item = next(item for item in world["items"] if item["pid"] == 99)
+    assert item["status"] == "semantic_only"
+    assert item["geometry_source"] == "at-spi2"
+    assert item["sources"] == ["at-spi2"]
+    assert item["match"]["method"] == "semantic_only"
+    assert item["confidence"] == 0.5
+    assert item["geometry"]["exposure"]["topmost"] is None
+
+
+def test_empty_title_single_process_joins_by_pid(monkeypatch):
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": True,
+            "count": 1,
+            "items": [atspi_window(title="", frame=rect(0, 0, 100, 100))],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 1,
+            "items": [
+                compositor_window(
+                    title="",
+                    frame=rect(400, 100, 100, 100),
+                    buffer_origin={"x": 400, "y": 100},
+                )
+            ],
+        },
+    )
+    world = _windows()
+    assert world["count"] == 1
+    item = world["items"][0]
+    assert item["status"] == "verified"
+    assert item["match"]["method"] == "pid_only"
+    assert item["confidence"] == 0.5
+    assert item["frame"] == rect(400, 100, 100, 100)
+
+
+def test_minimized_window_does_not_occlude_lower_windows(monkeypatch):
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": False,
+            "reason": "pyatspi missing",
+            "count": 0,
+            "items": [],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 2,
+            "items": [
+                compositor_window(
+                    id=1,
+                    pid=43,
+                    title="bottom",
+                    frame=rect(0, 0, 100, 100),
+                    buffer_origin={"x": 0, "y": 0},
+                    focused=False,
+                    stacking=0,
+                ),
+                compositor_window(
+                    id=2,
+                    pid=44,
+                    title="minimized",
+                    frame=rect(50, 0, 100, 100),
+                    buffer_origin={"x": 50, "y": 0},
+                    focused=False,
+                    minimized=True,
+                    visible=False,
+                    stacking=1,
+                ),
+            ],
+        },
+    )
+    world = _windows()
+    bottom = next(item for item in world["items"] if item["title"] == "bottom")
+    minimized = next(item for item in world["items"] if item["title"] == "minimized")
+
+    assert bottom["geometry"]["exposure"]["exposed_fraction"] == 1.0
+    assert bottom["geometry"]["exposure"]["topmost"] is True
+    assert minimized["geometry"]["presented"] is False
+    assert minimized["geometry"]["exposure"]["not_presented_reason"] == "minimized"
+    assert minimized["geometry"]["exposure"]["exposed_fraction"] == 0.0
+
+
+def test_shaded_window_and_occluder_preserve_uncertainty(monkeypatch):
+    top = atspi_window(
+        pid=42,
+        title="shaded",
+        frame=rect(50, 0, 100, 100),
+        shaded=True,
+    )
+    install_sources(
+        monkeypatch,
+        {
+            "source": "at-spi2",
+            "available": True,
+            "count": 1,
+            "items": [top],
+        },
+        {
+            "source": "org.cua.WinRects",
+            "available": True,
+            "version": 8,
+            "count": 2,
+            "items": [
+                compositor_window(
+                    id=1,
+                    pid=43,
+                    title="bottom",
+                    frame=rect(0, 0, 100, 100),
+                    buffer_origin={"x": 0, "y": 0},
+                    focused=False,
+                    stacking=0,
+                ),
+                compositor_window(
+                    id=2,
+                    pid=42,
+                    title="shaded",
+                    frame=rect(50, 0, 100, 100),
+                    buffer_origin={"x": 50, "y": 0},
+                    focused=True,
+                    stacking=1,
+                ),
+            ],
+        },
+    )
+    world = _windows()
+    shaded = next(item for item in world["items"] if item["title"] == "shaded")
+    bottom = next(item for item in world["items"] if item["title"] == "bottom")
+
+    assert shaded["state"]["shaded"] is True
+    assert shaded["geometry"]["shaded"] is True
+    assert shaded["geometry"]["exposure"]["surface"] == "shaded"
+    assert shaded["geometry"]["exposure"]["topmost"] is None
+
+    assert bottom["geometry"]["exposure"]["topmost"] is None
+    assert bottom["geometry"]["exposure"]["occlusion_known"] is False
+    assert "shaded window" in bottom["geometry"]["exposure"]["limitations"][0]
 
 
 def test_no_window_source_reports_explicit_failure(monkeypatch):

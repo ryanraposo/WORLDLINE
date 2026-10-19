@@ -31,4 +31,6 @@
   </g></g>
   <text x="600" y="605" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif"
         font-size="118" font-weight="700" letter-spacing="18">WORLDLINE</text>
+  <text x="600" y="650" fill="#FFFFFF" opacity=".62" font-family="Arial, Helvetica, sans-serif"
+        font-size="28" letter-spacing="5">WORLDLINE: Operating Fact.</text>
 </svg>

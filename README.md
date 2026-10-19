@@ -2,9 +2,7 @@
   <img src="assets/worldline-ubuntu26-hero.svg" alt="WORLDLINE" width="1200">
 </p>
 
-# WORLDLINE
-
-> **WORLDLINE is the current.**
+# WORLDLINE: Operating Fact.
 
 A live, revisioned view of what the machine knows now.
 
@@ -171,8 +169,10 @@ reported as missing; it is not replaced with a plausible value.
 AT-SPI supplies semantic window identity: application, title, role, focus,
 modal, maximized and minimized state. The Cua `org.cua.WinRects` GNOME Shell
 helper supplies compositor frames and bottom-to-top stacking. The two views are
-joined by process, title and frame overlap; compositor geometry is authoritative
-when both exist, and each item records which source supplied its geometry.
+joined by process, title and frame overlap; stronger evidence wins first, so a
+stale or untitled semantic object cannot consume the frame of a better-evidenced
+sibling. Compositor geometry is authoritative when both exist, and each item
+records which source supplied its geometry.
 
 Each window carries:
 
@@ -180,9 +180,29 @@ Each window carries:
 - `screen` and the clipped `visible_rect`, `visible_area` and `visible_fraction`
 - `offscreen` edges and `fully_on_screen`
 - `monitor`, `monitor_relative`, `device_pixels` and per-monitor intersections
+- `work_area`, `on_work_area` and `work_area_fraction` when the display source
+  supplies a usable monitor region
+- `presented`, `shaded` and `state.shaded` for minimized, hidden and shaded surfaces
 - `exposure` computed from higher windows in stacking order, with
   `occlusion_known` distinguishing proven exposure from unknown stacking
+- `status` (`verified`, `semantic_only` or `geometry_only`) and a numeric
+  `confidence`
+- `match` describing the join: method, confidence, score, pid/title match and
+  frame overlap
 - `sources` and `geometry_source` for provenance
+
+Minimized and hidden windows report `presented: false` and zero exposure instead
+of pretending their last frame is visible. Shaded windows and shaded occluders
+report `topmost: null`, `occlusion_known: false` and an explicit limitation; the
+rectangle fraction is marked as an upper bound. Every exposure also reports
+`pixel_accurate: false`, `shape_known: false` and `transparency_known: false`.
+
+A semantic window without a compositor frame stays canonical when it looks like
+a real surface (`semantic_only`). Degenerate off-screen frames and semantic
+duplicates are moved to `deduplicated` with an explicit `status` and `reason`
+instead of silently disappearing. `count` is the number of distinct canonical
+windows; `counts` reports verified, semantic-only, geometry-only, stale and
+duplicate observations.
 
 Occlusion is a frame-rectangle model. It does not claim pixel-perfect visibility
 through transparent or irregular window regions.

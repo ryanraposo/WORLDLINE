@@ -23,7 +23,9 @@ def request(path: str, op: str, args: dict | None = None) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="WORLDLINE control client")
+    parser = argparse.ArgumentParser(
+        description="WORLDLINE: Operating Fact. control client"
+    )
     parser.add_argument("--socket", default=default_socket())
     parser.add_argument(
         "op",

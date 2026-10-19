@@ -1,4 +1,6 @@
-# Ubuntu 26.04 LTS — platform iteration
+# WORLDLINE: Operating Fact.
+
+Ubuntu 26.04 LTS — platform iteration
 
 Ubuntu 26.04 LTS with GNOME on Wayland is the first explicitly documented WORLDLINE host iteration.
 

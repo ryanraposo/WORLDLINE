@@ -121,6 +121,107 @@ def test_unknown_stacking_never_claims_topmost():
     assert geometry["exposure"]["topmost"] is None
 
 
+def test_minimized_or_hidden_windows_are_not_presented():
+    minimized = describe(
+        rect(0, 0, 100, 100),
+        monitors=MONITORS,
+        z_index=3,
+        minimized=True,
+    )
+    assert minimized["presented"] is False
+    exposure = minimized["exposure"]
+    assert exposure["not_presented"] is True
+    assert exposure["not_presented_reason"] == "minimized"
+    assert exposure["visible_surface"] is False
+    assert exposure["exposed_fraction"] == 0.0
+    assert exposure["exposed_area"] == 0
+    assert exposure["topmost"] is None
+    assert exposure["method"] == "window_state"
+
+    hidden = describe(
+        rect(0, 0, 100, 100),
+        monitors=MONITORS,
+        visible=False,
+    )
+    assert hidden["presented"] is False
+    assert hidden["exposure"]["not_presented_reason"] == "hidden"
+    assert hidden["exposure"]["exposed_fraction"] == 0.0
+
+
+def test_shaded_window_does_not_claim_exact_exposure():
+    geometry = describe(
+        rect(0, 0, 100, 100),
+        monitors=MONITORS,
+        z_index=2,
+        shaded=True,
+    )
+    assert geometry["presented"] is True
+    assert geometry["shaded"] is True
+    exposure = geometry["exposure"]
+    assert exposure["surface"] == "shaded"
+    assert exposure["visible_surface"] is True
+    assert exposure["topmost"] is None
+    assert exposure["occlusion_known"] is False
+    assert exposure["exposed_fraction_upper_bound"] is True
+    assert "titlebar" in exposure["limitations"][0]
+
+
+def test_shaded_occluder_marks_coverage_uncertain():
+    geometry = describe(
+        rect(0, 0, 100, 100),
+        monitors=MONITORS,
+        occluders=[rect(50, 0, 100, 100)],
+        z_index=1,
+        occlusion_uncertain=True,
+    )
+    exposure = geometry["exposure"]
+    assert exposure["topmost"] is None
+    assert exposure["occlusion_known"] is False
+    assert exposure["stacking_index"] == 1
+    assert "shaded window" in exposure["limitations"][0]
+
+
+def test_exposure_never_claims_pixel_or_shape_accuracy():
+    exposure = describe(rect(0, 0, 10, 10), monitors=MONITORS)["exposure"]
+    assert exposure["pixel_accurate"] is False
+    assert exposure["shape_known"] is False
+    assert exposure["transparency_known"] is False
+
+
+def test_monitor_work_area_reports_usable_region():
+    monitors = [
+        {
+            **MONITORS[0],
+            "work_area": {"x": 0, "y": 32, "width": 1920, "height": 1048},
+        }
+    ]
+    geometry = describe(rect(0, 0, 100, 100), monitors=monitors)
+    assert geometry["monitor"]["work_area"] == {
+        "x": 0,
+        "y": 32,
+        "width": 1920,
+        "height": 1048,
+    }
+    assert geometry["work_area"] == {
+        "x": 0,
+        "y": 32,
+        "width": 1920,
+        "height": 1048,
+    }
+    assert geometry["on_work_area"] is True
+    assert geometry["work_area_visible_rect"] == {
+        "x": 0,
+        "y": 32,
+        "width": 100,
+        "height": 68,
+    }
+    assert geometry["work_area_fraction"] == 0.68
+
+    outside = describe(rect(2000, 0, 100, 100), monitors=monitors)
+    assert outside["on_work_area"] is False
+    assert outside["work_area_fraction"] == 0.0
+
+
 def test_device_pixels_follow_monitor_scale():
     monitors = [{**MONITORS[0], "scale": 2.0}]
     geometry = describe(rect(10, 20, 100, 50), monitors=monitors)

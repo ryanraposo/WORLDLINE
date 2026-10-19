@@ -22,29 +22,45 @@ class WorldlineDaemon:
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
         req = Request.from_dict(raw)
         if req.protocol != PROTOCOL_VERSION:
-            return error(req, "protocol_mismatch", f"supported protocol is {PROTOCOL_VERSION}")
+            return error(
+                req, "protocol_mismatch", f"supported protocol is {PROTOCOL_VERSION}"
+            )
         if req.op not in CORE_OPS:
             return error(req, "unknown_op", req.op)
         if req.op in {"hello", "features"}:
-            return ok(req, {
-                "protocol": PROTOCOL_VERSION,
-                "ops": sorted(CORE_OPS),
-                "compatibility": ["embedded-worldline-six-op"],
-                "extension_model": ["providers", "consumers", "facts", "capabilities", "affordances"],
-                "providers": sorted(self.providers),
-            })
+            return ok(
+                req,
+                {
+                    "protocol": PROTOCOL_VERSION,
+                    "ops": sorted(CORE_OPS),
+                    "compatibility": ["embedded-worldline-six-op"],
+                    "extension_model": [
+                        "providers",
+                        "consumers",
+                        "facts",
+                        "capabilities",
+                        "affordances",
+                    ],
+                    "providers": sorted(self.providers),
+                },
+            )
         if req.op == "observe":
             provider_name = str(req.args.get("provider", "gnome"))
             provider = self.providers.get(provider_name)
             if provider is None:
                 return error(req, "unknown_provider", provider_name)
             facts = list(provider.observe())
-            revision = self.store.apply(facts, expected_revision=req.args.get("expected_revision"))
-            return ok(req, {
-                "provider": provider_name,
-                "revision": revision,
-                "fact_count": len(facts),
-            })
+            revision = self.store.apply(
+                facts, expected_revision=req.args.get("expected_revision")
+            )
+            return ok(
+                req,
+                {
+                    "provider": provider_name,
+                    "revision": revision,
+                    "fact_count": len(facts),
+                },
+            )
         if req.op == "fence":
             revision = self.store.fence()
             return ok(req, {"revision": revision, "code": "fenced"})
@@ -65,7 +81,9 @@ class WorldlineDaemon:
                 ),
                 tags=tuple(req.args.get("tags") or ()),
             )
-            revision = self.store.apply([fact], expected_revision=req.args.get("expected_revision"))
+            revision = self.store.apply(
+                [fact], expected_revision=req.args.get("expected_revision")
+            )
             return ok(req, {"revision": revision})
         if req.op == "arm":
             return ok(req, {"armed": True, "revision": self.store.revision})
@@ -76,26 +94,37 @@ class WorldlineDaemon:
                 if isinstance(predicates, list) and predicates:
                     predicate = predicates[0]
                 else:
-                    return error(req, "invalid_wait", "wait requires predicate or predicates")
+                    return error(
+                        req, "invalid_wait", "wait requires predicate or predicates"
+                    )
             after = req.args.get("after_revision", self.store.revision)
             try:
                 after = int(after)
                 timeout = max(0.001, min(float(req.args.get("timeout", 5.0)), 120.0))
             except (TypeError, ValueError):
-                return error(req, "invalid_wait", "after_revision and timeout must be numeric")
-            ready, revision = self.store.wait_for(predicate, after_revision=after, timeout=timeout)
-            return ok(req, {
-                "revision": revision,
-                "state": "ready" if ready else "timeout",
-                "predicate": predicate,
-                "after_revision": after,
-            })
+                return error(
+                    req, "invalid_wait", "after_revision and timeout must be numeric"
+                )
+            ready, revision = self.store.wait_for(
+                predicate, after_revision=after, timeout=timeout
+            )
+            return ok(
+                req,
+                {
+                    "revision": revision,
+                    "state": "ready" if ready else "timeout",
+                    "predicate": predicate,
+                    "after_revision": after,
+                },
+            )
         if req.op == "close":
             self._closing = True
             return ok(req, {"closing": True})
         return error(req, "unimplemented", req.op)
 
-    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def handle(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         try:
             while not reader.at_eof():
                 line = await reader.readline()
@@ -104,10 +133,17 @@ class WorldlineDaemon:
                 try:
                     raw = json.loads(line)
                     response = self.dispatch(raw)
-                except Exception as exc:  # boundary: never tear down daemon on malformed request
-                    response = {"ok": False, "protocol": PROTOCOL_VERSION,
-                                "error": {"code": "bad_request", "message": str(exc)}}
-                writer.write((json.dumps(response, separators=(",", ":")) + "\n").encode())
+                except (
+                    Exception
+                ) as exc:  # boundary: never tear down daemon on malformed request
+                    response = {
+                        "ok": False,
+                        "protocol": PROTOCOL_VERSION,
+                        "error": {"code": "bad_request", "message": str(exc)},
+                    }
+                writer.write(
+                    (json.dumps(response, separators=(",", ":")) + "\n").encode()
+                )
                 await writer.drain()
                 if self._closing:
                     break
@@ -136,7 +172,9 @@ def default_socket() -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="WORLDLINE daemon")
+    parser = argparse.ArgumentParser(
+        description="WORLDLINE: Operating Fact. observation daemon"
+    )
     parser.add_argument("--socket", default=default_socket())
     args = parser.parse_args()
     try:

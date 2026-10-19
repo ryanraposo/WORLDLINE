@@ -34,6 +34,10 @@ The mark is deliberately monochrome and survives from favicon size through displ
 - `worldline-loader.svg` — compact loading state.
 - `worldline-wallpaper-dark.svg` / `worldline-wallpaper-light.svg` — large-field compositions.
 
+## Brand line
+
+**WORLDLINE: Operating Fact.** is the brand. Use it as the product name and tagline wherever the system is named: document headings, READMEs, CLI help, and lockup compositions.
+
 ## Usage
 
 Keep the canonical symbol geometry intact. Do not rotate, stretch, redraw, relocate the static observation node, or remove the secondary arc.

@@ -33,7 +33,7 @@ def dumps(value: Any, *, pretty: bool = False) -> str:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="worldline",
-        description="Everything an agent needs to know about this machine, as JSON.",
+        description="WORLDLINE: Operating Fact. A live, revisioned view of what the machine knows now, as JSON.",
     )
     parser.add_argument(
         "paths",

@@ -1,4 +1,6 @@
-# Compatibility
+# WORLDLINE: Operating Fact.
+
+Compatibility
 
 WORLDLINE has two relevant design histories.
 

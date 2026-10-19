@@ -1,4 +1,6 @@
-# Research foundations
+# WORLDLINE: Operating Fact.
+
+Research foundations
 
 WORLDLINE starts from a concrete research result: reliable computer agency needs a **persistent, revisioned world model**, not a fresh screenshot interpretation before every action.
 

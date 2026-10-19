@@ -134,6 +134,8 @@ def _public_monitor(monitor: Mapping[str, Any], index: int) -> dict[str, Any]:
     for key in ("connector", "connectors", "name", "mode", "refresh_hz"):
         if key in monitor:
             result[key] = monitor[key]
+    if isinstance(monitor.get("work_area"), Mapping):
+        result["work_area"] = from_rect(monitor["work_area"])  # type: ignore[arg-type]
     if result.get("connector") is None and result.get("connectors"):
         result["connector"] = result["connectors"][0]
     return result
@@ -217,8 +219,20 @@ def describe(
     buffer_origin: Mapping[str, Any] | None = None,
     occluders: Sequence[Mapping[str, Any]] = (),
     z_index: int | None = None,
+    visible: bool = True,
+    minimized: bool = False,
+    shaded: bool = False,
+    occlusion_uncertain: bool = False,
+    work_area: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Describe one window frame against the display and stacking order."""
+    """Describe one window frame against the display and stacking order.
+
+    ``visible``/``minimized`` describe presentation, not frame clipping.
+    ``shaded`` means only the titlebar is expected on screen, so the exact
+    exposed region is unknown.  ``occlusion_uncertain`` marks a stack whose
+    higher windows include a shaded surface.  The returned exposure never
+    claims pixel accuracy for transparency, shadows or irregular shapes.
+    """
 
     window = from_rect(frame)
     display = screen_bounds(monitors, screen)
@@ -246,11 +260,11 @@ def describe(
         }
 
     if display is not None:
-        visible = intersection(window, display)
-        visible_area = area(visible) if visible else 0
+        clipped = intersection(window, display)
+        visible_area = area(clipped) if clipped else 0
         result["screen"] = display
-        result["on_screen"] = visible is not None
-        result["visible_rect"] = visible or rect(
+        result["on_screen"] = clipped is not None
+        result["visible_rect"] = clipped or rect(
             max(window["x"], display["x"]),
             max(window["y"], display["y"]),
             0,
@@ -320,15 +334,76 @@ def describe(
         result["monitor_intersections"] = intersections
         result["spans_monitors"] = len(intersections) > 1
 
-    result["exposure"] = _exposure(window, occluders)
-    result["exposure"]["occlusion_known"] = z_index is not None
+    if (
+        work_area is None
+        and monitor is not None
+        and isinstance(monitor.get("work_area"), Mapping)
+    ):
+        work_area = monitor["work_area"]  # type: ignore[assignment]
+    if work_area is not None:
+        work = from_rect(work_area)
+        overlap = intersection(window, work)
+        result["work_area"] = work
+        result["on_work_area"] = overlap is not None
+        result["work_area_visible_rect"] = overlap or rect(
+            max(window["x"], work["x"]),
+            max(window["y"], work["y"]),
+            0,
+            0,
+        )
+        result["work_area_fraction"] = _fraction(
+            area(overlap) if overlap else 0, area(window)
+        )
+
+    result["presented"] = bool(visible and not minimized)
+    result["shaded"] = bool(shaded)
+    exposure = _exposure(window, occluders)
+    exposure["pixel_accurate"] = False
+    exposure["shape_known"] = False
+    exposure["transparency_known"] = False
+    if not visible or minimized:
+        exposure.update(
+            {
+                "exposed_fraction": 0.0,
+                "exposed_area": 0,
+                "occluded_area": 0,
+                "topmost": None,
+                "method": "window_state",
+                "visible_surface": False,
+                "not_presented": True,
+                "not_presented_reason": "minimized" if minimized else "hidden",
+                "occlusion_known": True,
+            }
+        )
+    elif shaded:
+        exposure.update(
+            {
+                "topmost": None,
+                "occlusion_known": False,
+                "visible_surface": True,
+                "surface": "shaded",
+                "exposed_fraction_upper_bound": True,
+                "limitations": [
+                    "shaded windows expose only their titlebar; exact region unknown"
+                ],
+            }
+        )
+    else:
+        exposure["visible_surface"] = True
+        exposure["occlusion_known"] = z_index is not None and not occlusion_uncertain
+        if occlusion_uncertain:
+            exposure["topmost"] = None
+            exposure["limitations"] = [
+                "a shaded window higher in the stack makes exact coverage unknown"
+            ]
     if z_index is not None:
         # WinRects numbers windows from the bottom of the stack (0) upward.
-        result["exposure"]["stacking_index"] = int(z_index)
-        result["exposure"]["stacking_order"] = "bottom-to-top"
-    else:
+        exposure["stacking_index"] = int(z_index)
+        exposure["stacking_order"] = "bottom-to-top"
+    elif exposure.get("topmost") is not None:
         # Without a compositor stack there is no evidence for a topmost claim.
-        result["exposure"]["topmost"] = None
+        exposure["topmost"] = None
+    result["exposure"] = exposure
     return result
 
 
