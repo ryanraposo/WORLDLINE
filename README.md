@@ -122,9 +122,9 @@ The daemon joins these observations into the current.
 
 ## Ubuntu 26.04 LTS — platform iteration
 
-Ubuntu 26.04 LTS, GNOME 50 and Wayland provide the concrete host for the first documented platform iteration. WORLDLINE observes the host through native interfaces and preserves source evidence, typed facts and revision boundaries.
+Ubuntu 26.04 LTS on GNOME/Wayland is the target for this documented platform iteration. The existing GNOME provider emits environment, installed-command, version, session, settings and AT-SPI bus-reachability facts. The hero is a schematic example of those fact types, not a captured runtime session.
 
-The iteration covers OS and session discovery, GNOME/Mutter windows and workspaces, AT-SPI semantics, PipeWire media, system services and process facts. See [`docs/UBUNTU_26.md`](docs/UBUNTU_26.md) for the observation matrix, implementation sequence and acceptance evidence.
+The proposed iteration extends observation toward OS and session discovery, GNOME/Mutter windows and workspaces, AT-SPI semantics, PipeWire media, system services and process facts. See [`docs/UBUNTU_26.md`](docs/UBUNTU_26.md) for the observation matrix, implementation sequence and acceptance evidence.
 
 ## Current platform
 
