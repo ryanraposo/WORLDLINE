@@ -2,7 +2,11 @@
 
 Ubuntu 26.04 LTS with GNOME on Wayland is the first explicitly documented WORLDLINE host iteration.
 
-## Observation surfaces
+## Current implementation boundary
+
+`src/worldline/providers/gnome.py` currently reads `XDG_SESSION_TYPE`, `XDG_CURRENT_DESKTOP`, `WAYLAND_DISPLAY` and `XDG_RUNTIME_DIR`; tests command availability and version output; queries `loginctl` session flags when an ID is present; reads the GNOME color-scheme setting; and probes AT-SPI bus reachability. These are the implemented observation paths, subject to runtime availability. The richer sources below are iteration targets rather than verified provider coverage.
+
+## Proposed observation surfaces
 
 | Surface | Evidence | Operating facts |
 | --- | --- | --- |
