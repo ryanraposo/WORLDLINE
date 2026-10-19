@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="WORLDLINE" width="1200">
+  <img src="assets/worldline-ubuntu26-hero.svg" alt="WORLDLINE" width="1200">
 </p>
 
 # WORLDLINE
@@ -119,6 +119,12 @@ A runtime interface can expose the current value directly.
 A bounded reconciliation can refresh a source when needed.
 
 The daemon joins these observations into the current.
+
+## Ubuntu 26.04 LTS — platform iteration
+
+Ubuntu 26.04 LTS, GNOME 50 and Wayland provide the concrete host for the first documented platform iteration. WORLDLINE observes the host through native interfaces and preserves source evidence, typed facts and revision boundaries.
+
+The iteration covers OS and session discovery, GNOME/Mutter windows and workspaces, AT-SPI semantics, PipeWire media, system services and process facts. See [`docs/UBUNTU_26.md`](docs/UBUNTU_26.md) for the observation matrix, implementation sequence and acceptance evidence.
 
 ## Current platform
 
