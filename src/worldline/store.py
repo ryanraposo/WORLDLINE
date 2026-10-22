@@ -35,6 +35,7 @@ class WorldStore:
         self._revision = 0
         self._facts: dict[str, Fact] = {}
         self._changed_at: dict[str, int] = {}
+        self._observed_at: dict[str, int] = {}
         self._invalidated_at: dict[str, int] = {}
 
     @property
@@ -70,13 +71,21 @@ class WorldStore:
                 )
             changed = False
             changed_keys: list[str] = []
+            observed_keys: list[str] = []
             for fact in facts:
-                if self._facts.get(fact.key) != fact:
+                previous = self._facts.get(fact.key)
+                if previous != fact:
                     self._facts[fact.key] = fact
                     changed = True
-                    changed_keys.append(fact.key)
+                    observed_keys.append(fact.key)
+                    if (previous is None or previous.value != fact.value
+                            or previous.knowledge != fact.knowledge
+                            or previous.tags != fact.tags):
+                        changed_keys.append(fact.key)
             if changed:
                 self._revision += 1
+                for key in observed_keys:
+                    self._observed_at[key] = self._revision
                 for key in changed_keys:
                     self._changed_at[key] = self._revision
                 self._changed.notify_all()
@@ -140,6 +149,8 @@ class WorldStore:
                     return False, self._revision
 
                 fact = self._facts.get(path)
+                if fact is not None and not fact.evidence.valid_at():
+                    fact = None
                 if op == "changed":
                     ready = self._changed_at.get(path, 0) > fresh_after
                 elif op == "invalid":
@@ -147,7 +158,7 @@ class WorldStore:
                 elif op == "exists":
                     ready = fact is not None
                     if predicate.get("fresh_after") is not None:
-                        ready = ready and self._changed_at.get(path, 0) > fresh_after
+                        ready = ready and self._observed_at.get(path, 0) > fresh_after
                 elif op == "missing":
                     ready = fact is None
                     if predicate.get("fresh_after") is not None:
@@ -155,11 +166,11 @@ class WorldStore:
                 elif op == "ne":
                     ready = fact is not None and fact.value != want
                     if predicate.get("fresh_after") is not None:
-                        ready = ready and self._changed_at.get(path, 0) > fresh_after
+                        ready = ready and self._observed_at.get(path, 0) > fresh_after
                 else:
                     ready = fact is not None and fact.value == want
                     if predicate.get("fresh_after") is not None:
-                        ready = ready and self._changed_at.get(path, 0) > fresh_after
+                        ready = ready and self._observed_at.get(path, 0) > fresh_after
 
                 if ready:
                     return True, self._revision

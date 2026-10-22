@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from time import time
 from typing import Iterable
 
 from worldline.model import Evidence, Fact
@@ -27,7 +28,7 @@ class GNOMEProvider(ObservationProvider):
 
     def observe(self) -> Iterable[Fact]:
         def evidence(source: str, detail: dict | None = None) -> Evidence:
-            return Evidence(source=source, detail=detail or {})
+            return Evidence(source=source, detail=detail or {}, expires_at=time() + 65)
 
         facts: list[Fact] = []
         for key, value in {
