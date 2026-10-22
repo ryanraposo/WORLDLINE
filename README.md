@@ -36,6 +36,7 @@ worldline --fresh windows.active.geometry # refresh before reading
 worldline --explain windows.active.geometry # value, revision and evidence
 worldline --list                          # available sections
 worldline --list windows                  # paths in the windows section
+worldlinectl sources                      # provider and source catalogue
 ```
 
 `stdout` contains JSON. A path query returns its value; `--explain` adds its
@@ -58,7 +59,8 @@ component extents as its frame source and marks compositor stacking and pixel
 occlusion as unknown. A window `stable_id` derives from its process and AT-SPI
 accessible path for that process lifetime.
 
-The daemon serves revisioned facts over a user-private Unix socket. Agents can
+The source catalogue identifies each provider, its acquisition method and
+read cost. The daemon serves revisioned facts over a user-private Unix socket. Agents can
 read a focused path, refresh its source, and compare later evidence with a
 fence. Observation stays independent of each consumer's identity and actions.
 

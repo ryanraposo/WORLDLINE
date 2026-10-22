@@ -39,6 +39,7 @@ def main() -> None:
         choices=[
             "hello",
             "features",
+            "sources",
             "observe",
             "fence",
             "status",

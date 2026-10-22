@@ -40,3 +40,16 @@ def test_gnome_provider_omits_missing_package_version(monkeypatch):
     facts = {fact.key: fact for fact in GNOMEProvider().observe()}
     assert "gnome.mutter.package_version" not in facts
     assert "gnome.shell.package_version" not in facts
+
+
+def test_fast_gnome_observation_avoids_service_queries(monkeypatch):
+    import worldline.providers.gnome as module
+
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setattr(module, "_run", lambda *_a, **_k:
+                        (_ for _ in ()).throw(AssertionError("fast queried a service")))
+    facts = {fact.key: fact for fact in GNOMEProvider().observe_fast()}
+    assert facts["gnome.session.type"].value == "wayland"
+    assert "gnome.atspi.bus.reachable" not in facts
+    assert "gnome.mutter.package_version" not in facts
+    assert all(fact.evidence.expires_at is not None for fact in facts.values())

@@ -7,6 +7,9 @@ import os
 import shutil
 import socket
 import stat
+from collections import defaultdict
+from threading import Lock
+from time import monotonic, time
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +17,10 @@ from .current import Current
 from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
 from .query import QueryError
-from .store import WorldStore
+from .store import RevisionConflict, WorldStore
 from .providers.gnome import GNOMEProvider
+from .providers.host import HostRuntimeProvider
+from .sources import provider_description
 
 
 class WorldlineDaemon:
@@ -23,7 +28,38 @@ class WorldlineDaemon:
         self.store = store or WorldStore()
         self.current = Current(self.store)
         self._closing = False
-        self.providers = {"gnome": GNOMEProvider()}
+        self.providers = {"gnome": GNOMEProvider(), "host": HostRuntimeProvider()}
+        self.provider_readings: dict[str, dict[str, Any]] = {}
+        self._provider_guards = defaultdict(Lock)
+        self._blocking_slots = asyncio.Semaphore(4)
+
+    def _observe_provider(self, provider_name: str, *, mode: str = "active",
+                          expected_revision: int | None = None) -> tuple[int, int]:
+        provider = self.providers[provider_name]
+        read = provider.observe if mode == "active" else getattr(provider, "observe_fast", None)
+        if not callable(read):
+            raise ValueError("provider does not support fast observation")
+        with self._provider_guards[provider_name]:
+            started = monotonic()
+            try:
+                facts = list(read())
+                revision = self.store.reconcile(
+                    facts, managed_keys=getattr(provider, "managed_keys", ()),
+                    expected_revision=expected_revision,
+                )
+            except Exception as exc:
+                self.provider_readings[provider_name] = {
+                    "mode": mode, "ok": False, "error_type": type(exc).__name__,
+                    "duration_ms": round((monotonic() - started) * 1000, 2),
+                    "attempted_at": time(),
+                }
+                raise
+            self.provider_readings[provider_name] = {
+                "mode": mode, "ok": True, "fact_count": len(facts),
+                "duration_ms": round((monotonic() - started) * 1000, 2),
+                "attempted_at": time(), "revision": revision,
+            }
+            return revision, len(facts)
 
     def dispatch(self, raw: dict[str, Any]) -> dict[str, Any]:
         req = Request.from_dict(raw)
@@ -48,10 +84,18 @@ class WorldlineDaemon:
                         "affordances",
                     ],
                     "providers": sorted(self.providers),
+                    "source_catalog": True,
+                    "observation_modes": ["fast", "active"],
                     "query": {"paths": True, "fresh": True,
                               "views": ["world"], "legacy_default": True},
                 },
             )
+        if req.op == "sources":
+            return ok(req, {
+                "providers": [provider_description(self.providers[name])
+                              for name in sorted(self.providers)],
+                "last_reads": dict(self.provider_readings),
+            })
         if req.op == "observe":
             provider_name = str(req.args.get("provider", "gnome"))
             if provider_name == "current":
@@ -63,18 +107,26 @@ class WorldlineDaemon:
             provider = self.providers.get(provider_name)
             if provider is None:
                 return error(req, "unknown_provider", provider_name)
-            facts = list(provider.observe())
-            revision = self.store.apply(
-                facts, expected_revision=req.args.get("expected_revision")
-            )
-            return ok(
-                req,
-                {
-                    "provider": provider_name,
-                    "revision": revision,
-                    "fact_count": len(facts),
-                },
-            )
+            expected = req.args.get("expected_revision")
+            if expected is not None and expected != self.store.revision:
+                return error(req, "revision_conflict", "expected revision does not match")
+            mode = req.args.get("mode", "active")
+            if mode not in ("fast", "active"):
+                return error(req, "invalid_mode", "mode must be fast or active")
+            if mode == "fast" and not callable(getattr(provider, "observe_fast", None)):
+                return error(req, "unsupported_mode", "provider does not offer a fast read")
+            try:
+                revision, count = self._observe_provider(
+                    provider_name, mode=mode, expected_revision=expected,
+                )
+            except RevisionConflict:
+                return error(req, "revision_conflict", "expected revision does not match")
+            except Exception:
+                return error(req, "observation_failed", "provider could not complete read")
+            return ok(req, {
+                "provider": provider_name, "revision": revision,
+                "fact_count": count, "mode": mode,
+            })
         if req.op == "fence":
             revision = self.store.fence()
             return ok(req, {"revision": revision, "code": "fenced"})
@@ -82,6 +134,24 @@ class WorldlineDaemon:
             snap = self.store.snapshot()
             return ok(req, {"revision": snap.revision, "fact_count": len(snap.facts)})
         if req.op in {"query", "capture"}:
+            selected = req.args.get("refresh", [])
+            if not isinstance(selected, list) or len(selected) > 8 or any(
+                not isinstance(name, str) for name in selected
+            ):
+                return error(req, "invalid_refresh", "refresh must be a provider name list")
+            mode = req.args.get("mode", "active")
+            if mode not in ("fast", "active"):
+                return error(req, "invalid_mode", "mode must be fast or active")
+            for name in dict.fromkeys(selected):
+                provider = self.providers.get(name)
+                if provider is None:
+                    return error(req, "unknown_provider", name)
+                if mode == "fast" and not callable(getattr(provider, "observe_fast", None)):
+                    return error(req, "unsupported_mode", f"{name} does not offer a fast read")
+                try:
+                    self._observe_provider(name, mode=mode)
+                except Exception:
+                    return error(req, "observation_failed", f"{name} could not complete read")
             paths = req.args.get("paths")
             if paths is not None:
                 if req.op != "query" or not isinstance(paths, list) or not paths or not all(
@@ -186,6 +256,9 @@ class WorldlineDaemon:
                             if asyncio.get_running_loop().time() >= deadline:
                                 break
                             await asyncio.sleep(0.05)
+                    elif raw.get("op") in {"observe", "query", "capture"}:
+                        async with self._blocking_slots:
+                            response = await asyncio.to_thread(self.dispatch, raw)
                     else:
                         response = self.dispatch(raw)
                 except (
@@ -232,9 +305,9 @@ async def serve(socket_path: str) -> None:
         while True:
             await asyncio.sleep(2)
             ticks += 1
-            daemon.current.ensure()
+            await asyncio.to_thread(daemon.current.ensure)
             if ticks % 15 == 0:
-                daemon.dispatch({"op": "observe", "args": {"provider": "gnome"}})
+                await asyncio.to_thread(daemon.dispatch, {"op": "observe", "args": {"provider": "gnome"}})
 
     async def native_events() -> None:
         if not shutil.which("gdbus") or not os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
@@ -248,7 +321,7 @@ async def serve(socket_path: str) -> None:
             try:
                 async for line in process.stdout:
                     if b"signal" in line:
-                        daemon.current.refresh(["desktop", "windows"])
+                        await asyncio.to_thread(daemon.current.refresh, ["desktop", "windows"])
             finally:
                 if process.returncode is None:
                     process.terminate()

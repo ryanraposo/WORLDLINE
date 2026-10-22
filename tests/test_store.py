@@ -87,3 +87,17 @@ def test_expired_evidence_cannot_satisfy_value_wait():
         after_revision=0, timeout=0.01,
     )
     assert not ready
+
+def test_reconciled_equal_value_has_fresh_evidence_without_value_change():
+    store = WorldStore()
+    store.reconcile([Fact("host.ready", True, Evidence("probe", observed_at=1))],
+                    managed_keys=("host.ready",))
+    fence = store.fence()
+    store.reconcile([Fact("host.ready", True, Evidence("probe", observed_at=2))],
+                    managed_keys=("host.ready",))
+    assert not store.changed_after("host.ready", fence)
+    ready, revision = store.wait_for(
+        {"path": "host.ready", "op": "eq", "value": True,
+         "fresh_after": fence}, after_revision=fence, timeout=0.01,
+    )
+    assert ready and revision > fence

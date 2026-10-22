@@ -91,6 +91,51 @@ class WorldStore:
                 self._changed.notify_all()
             return self._revision
 
+    def reconcile(
+        self, facts: Iterable[Fact], *,
+        managed_keys: Iterable[str] = (),
+        expected_revision: int | None = None,
+    ) -> int:
+        """Apply one source sample and withdraw absent source-owned facts atomically."""
+        incoming = list(facts)
+        keys = [fact.key for fact in incoming]
+        if len(set(keys)) != len(keys):
+            raise ValueError("provider emitted duplicate fact keys")
+        managed = set(managed_keys)
+        if managed and not set(keys).issubset(managed):
+            raise ValueError("provider emitted keys outside its declared ownership")
+        with self._changed:
+            if expected_revision is not None and expected_revision != self._revision:
+                raise RevisionConflict(
+                    f"expected revision {expected_revision}, current revision {self._revision}"
+                )
+            removed = {key for key in managed if key in self._facts and key not in keys}
+            observed = {
+                fact.key for fact in incoming if self._facts.get(fact.key) != fact
+            }
+            if not removed and not observed:
+                return self._revision
+            changed = {
+                fact.key for fact in incoming
+                if (previous := self._facts.get(fact.key)) is None
+                or previous.value != fact.value
+                or previous.knowledge != fact.knowledge
+                or previous.tags != fact.tags
+            }
+            for key in removed:
+                self._facts.pop(key)
+            for fact in incoming:
+                self._facts[fact.key] = fact
+            self._revision += 1
+            for key in observed:
+                self._observed_at[key] = self._revision
+            for key in changed:
+                self._changed_at[key] = self._revision
+            for key in removed:
+                self._invalidated_at[key] = self._revision
+            self._changed.notify_all()
+            return self._revision
+
     def invalidate(self, keys: Iterable[str], *, expected_revision: int | None = None) -> int:
         keys = list(keys)
         with self._lock:
