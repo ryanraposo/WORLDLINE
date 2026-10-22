@@ -943,6 +943,15 @@ class _AtspiTimeout:
 def _atspi_windows() -> dict[str, Any]:
     """Read semantic window identities from AT-SPI."""
 
+    # pyatspi may abort the process when a session advertises an inaccessible
+    # accessibility bus (for example inside a filesystem/network sandbox).
+    # Probe the bus before importing it so failure remains an unavailable fact.
+    probe = _run(("gdbus", "introspect", "--session", "--dest", "org.a11y.Bus",
+                  "--object-path", "/org/a11y/bus"), timeout=0.7)
+    if probe is None or probe[0] != 0:
+        return {"source": "at-spi2", "available": False,
+                "reason": "accessibility bus is not reachable", "count": 0, "items": []}
+
     try:
         import pyatspi
     except Exception as exc:
@@ -1574,6 +1583,7 @@ def _windows() -> dict[str, Any]:
         "available": available,
         "count": len(merged),
         "items": merged,
+        "by_id": {item["stable_id"]: item for item in merged if item.get("stable_id")},
         "deduplicated": deduplicated,
         "active": _active_summary(merged),
         "screen": screen,

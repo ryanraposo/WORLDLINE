@@ -1,336 +1,102 @@
 <p align="center">
-  <img src="assets/worldline-ubuntu26-hero.svg" alt="WORLDLINE" width="1200">
+  <img src="assets/banner.png" alt="WORLDLINE" width="1200">
 </p>
 
-# WORLDLINE: Operating Fact.
+# WORLDLINE
 
-A live, revisioned view of what the machine knows now.
+**Operating fact.**
 
-## Operating Fact
+WORLDLINE answers four questions for an agent: **What is true now? How current is
+it? Where did it come from? Where should I look next?** It reads the machine's
+own sources and exposes a revisioned current. Missing evidence stays missing.
 
-An **Operating Fact** is a typed statement about the machine at a particular revision.
-
-```text
-Operating Fact
-├── type
-├── value
-├── revision
-└── evidence
-    ├── source
-    ├── observed_at
-    └── detail
-```
-
-The value is the present coordinate.
-
-The type tells the system what kind of coordinate it is.
-
-The evidence receipt tells an agent where the coordinate came from.
-
-That makes a fact useful as machinery.
-
-See [`docs/OPERATING_FACT.md`](docs/OPERATING_FACT.md).
-
-## Truth has a type
-
-WORLDLINE keeps the kind of knowledge alongside the knowledge itself.
-
-```text
-DIRECT
-  ↓
-CORRELATED
-  ↓
-DERIVED
-  ↓
-INFERRED
-```
-
-A direct operating-system fact carries the authority of the subsystem that stated it.
-
-A correlated fact carries the evidence that joined its sources.
-
-A derived fact carries the calculation that produced it.
-
-An inferred fact carries the observation and interpretation that produced it.
-
-The type travels with the fact.
-
-## Evidence receipts
-
-Every useful fact has somewhere it came from.
-
-Examples include:
-
-```text
-AT-SPI event
-Mutter state
-D-Bus property
-PipeWire metadata
-journal entry
-state/config file
-environment
-Cua observation
-bounded command
-```
-
-A receipt gives an agent a path back to the system that can explain or refresh the fact.
-
-WORLDLINE carries that provenance forward with the present.
-
-## The current
-
-WORLDLINE joins the machine's existing sources of knowledge into one revisioned present.
-
-```text
-GNOME / Mutter
-AT-SPI
-PipeWire
-D-Bus
-system services
-state files
-logs
-runtime interfaces
-       │
-       ▼
-   observation
-       │
-       ▼
-Operating Fact
-       │
-       ▼
-   WORLDLINE
-       │
-       ├── revision
-       ├── evidence
-       ├── change
-       └── query / wait
-```
-
-Observation follows the fact to the place where it naturally exists.
-
-A native event can advance a fact immediately.
-
-A state file or journal entry can provide the evidence.
-
-A runtime interface can expose the current value directly.
-
-A bounded reconciliation can refresh a source when needed.
-
-The daemon joins these observations into the current.
-
-## Observe now
-
-The `worldline` command is a one-shot observation client. It collects only the
-sections a query needs, returns compact JSON, and exits.
+## Read the current
 
 ```bash
-worldline                          # the whole current world
-worldline os.kernel                # one fact
-worldline windows.active           # the active window
-worldline windows.active.geometry  # its frame, screen, monitor and exposure
-worldline storage.0.percent        # list index
-worldline storage[0].percent       # equivalent bracket form
-worldline storage.*.percent        # wildcard
-worldline host os storage.0        # several facts in one object
-worldline --list                   # every section
-worldline --pretty windows         # indented JSON
-worldline --all processes          # include full process list
+worldline                              # full snapshot, including revision and source status
+worldline windows.active.geometry      # one value
+worldline os.kernel memory.percent     # several values in one JSON object
+worldline --explain windows.active.geometry  # value, revision, source and freshness
+worldline --fresh windows.active.geometry    # refresh this source before reading
+worldline --list                       # available sections
+worldline --list windows               # discover paths under a section
 ```
 
-`stdout` is JSON. Errors are JSON on `stderr`: exit `1` means the path does not
-exist, exit `2` means the request itself is invalid.
+The command starts the private observation daemon on first use. Later commands
+read its current. A path query refreshes its source when the cached observation
+is due; `--fresh` forces a new read. `stdout` is JSON. Errors are JSON on
+`stderr`: exit `1` means the path is missing, `2` means the request is invalid,
+and `3` means WORLDLINE could not start or reach its daemon.
 
-### What it knows
+The full snapshot retains the familiar sections (`host`, `os`, `desktop`,
+`windows`, `processes`, and others). It adds a `revision` and a `sources` map
+with observation time, expiry, availability, and reason when a source is down.
+Ordinary path queries still return just the selected value; use `--explain` when
+the decision depends on provenance or freshness.
 
-| Section | Operating facts |
-| --- | --- |
-| **`time`** | epoch · ISO · timezone · UTC offset |
-| **`host`** | hostname · machine/boot id · uptime · hardware · GPUs · virtualization · container |
-| **`os`** | distro · version · kernel · arch · libc · Python · locale |
-| **`cpu`** | model · sockets · physical/logical cores · frequency · load · run queue |
-| **`pressure`** | kernel PSI for CPU · memory · I/O |
-| **`memory`** | RAM · swap · usage · cache · dirty pages |
-| **`storage`** | mounts · type · options · bytes · percent used |
-| **`network`** | interfaces · addresses · stats · routes · DNS · listeners |
-| **`session`** | user · uid/gid · home · shell · session/seat · display · cgroup · safe env |
-| **`desktop`** | session type · desktop · compositor · screen · logical monitors · a11y bus |
-| **`windows`** | app · title · role · frame · monitor · on-screen/offscreen/visible rects · scale · stacking exposure · active · focused · maximized · minimized · modal |
-| **`processes`** | count · threads · top-by-RSS · optional full list |
-| **`power`** | AC · batteries · charge · runtime estimate · max thermal zone |
-| **`audio`** | default sink/source · volume · mute |
-| **`cwd`** | path · writability · device/inode · git root/branch/HEAD |
-| **`tools`** | resolved path for each common CLI tool |
-
-Every source reports whether it was available and why. Missing evidence is
-reported as missing; it is not replaced with a plausible value.
-
-### Window geometry
-
-AT-SPI supplies semantic window identity: application, title, role, focus,
-modal, maximized and minimized state. The Cua `org.cua.WinRects` GNOME Shell
-helper supplies compositor frames and bottom-to-top stacking. The two views are
-joined by process, title and frame overlap; stronger evidence wins first, so a
-stale or untitled semantic object cannot consume the frame of a better-evidenced
-sibling. Compositor geometry is authoritative when both exist, and each item
-records which source supplied its geometry.
-
-Each window carries:
-
-- `frame` in desktop logical pixels, plus size, area, center and aspect ratio
-- `screen` and the clipped `visible_rect`, `visible_area` and `visible_fraction`
-- `offscreen` edges and `fully_on_screen`
-- `monitor`, `monitor_relative`, `device_pixels` and per-monitor intersections
-- `work_area`, `on_work_area` and `work_area_fraction` when the display source
-  supplies a usable monitor region
-- `presented`, `shaded` and `state.shaded` for minimized, hidden and shaded surfaces
-- `exposure` computed from higher windows in stacking order, with
-  `occlusion_known` distinguishing proven exposure from unknown stacking
-- `status` (`verified`, `semantic_only` or `geometry_only`) and a numeric
-  `confidence`
-- `match` describing the join: method, confidence, score, pid/title match and
-  frame overlap
-- `sources` and `geometry_source` for provenance
-
-Minimized and hidden windows report `presented: false` and zero exposure instead
-of pretending their last frame is visible. Shaded windows and shaded occluders
-report `topmost: null`, `occlusion_known: false` and an explicit limitation; the
-rectangle fraction is marked as an upper bound. Every exposure also reports
-`pixel_accurate: false`, `shape_known: false` and `transparency_known: false`.
-
-A semantic window without a compositor frame stays canonical when it looks like
-a real surface (`semantic_only`). Degenerate off-screen frames and semantic
-duplicates are moved to `deduplicated` with an explicit `status` and `reason`
-instead of silently disappearing. `count` is the number of distinct canonical
-windows; `counts` reports verified, semantic-only, geometry-only, stale and
-duplicate observations.
-
-Occlusion is a frame-rectangle model. It does not claim pixel-perfect visibility
-through transparent or irregular window regions.
-
-## Ubuntu 26.04 LTS — platform iteration
-
-Ubuntu 26.04 LTS on GNOME/Wayland is the target for this documented platform iteration. The existing GNOME provider emits environment, installed-command, version, session, settings and AT-SPI bus-reachability facts. The hero is a schematic example of those fact types, not a captured runtime session.
-
-The proposed iteration extends observation toward OS and session discovery, GNOME/Mutter windows and workspaces, AT-SPI semantics, PipeWire media, system services and process facts. See [`docs/UBUNTU_26.md`](docs/UBUNTU_26.md) for the observation matrix, implementation sequence and acceptance evidence.
-
-## Current platform
-
-**GNOME on Wayland.**
-
-The platform is expressed through its own operating machinery:
-
-- **GNOME Shell / Mutter** — windows, focus, stacking, workspaces, displays.
-- **AT-SPI2** — semantic UI and accessibility state.
-- **PipeWire** — media graph and frame transport.
-- **XDG Desktop Portal** — authorized desktop sessions.
-- **systemd-logind** — login and session state.
-- **NetworkManager** — network state.
-- **UPower** — power state.
-- **GSettings** — desktop configuration.
-- **`/proc`** — process facts.
-- **filesystem and journal sources** — durable machine state.
-
-GNOME and Mutter versions are observed as part of the current. Their changing APIs become new evidence sources while the Operating Fact model remains stable.
-
-See [`docs/OBSERVATION_SOURCES.md`](docs/OBSERVATION_SOURCES.md) and [`docs/GNOME_WAYLAND.md`](docs/GNOME_WAYLAND.md).
-
-## Change
-
-A WORLDLINE revision is the present coordinate of the fact world.
-
-```text
-observe
-   ↓
-revision
-   ↓
-change
-   ↓
-new evidence
-   ↓
-new revision
-```
-
-A fence establishes a causal boundary.
-
-A contingent wait can ask for evidence that arrived after that boundary.
-
-This gives an action a present to begin from and a current to continue into.
-
-## Architecture
-
-```text
-sources
-   │
-   ▼
-observation
-   │
-   ▼
-typed facts + evidence
-   │
-   ▼
-revisioned current
-   │
-   ├── query
-   ├── wait
-   ├── continuation
-   └── capture
-```
-
-`worldlined` is the persistent observation engine.
-
-Its work is to keep the current current.
-
-## Repository
-
-```text
-src/worldline/
-  model.py          typed facts and evidence
-  store.py          revisioned state store
-  capabilities.py   evidence-backed readiness
-  transactions.py   pre/postcondition primitives
-  protocol.py       versioned RPC envelope
-  daemon.py         observation daemon
-  observe.py        one-shot observation pipeline
-  query.py          dot/bracket/wildcard path queries
-  window_geometry.py frame, monitor and stacking geometry
-  cli.py            one-shot observation CLI
-  control.py        daemon control client
-  providers/        observation providers
-    gnome.py        GNOME / Wayland host facts
-  consumers/        consumer adapters
-```
-
-## Quick start
+## Locate a window
 
 ```bash
-python -m venv .venv
+worldline windows.active.geometry
+worldline windows.items
+worldline windows.by_id
+worldline --explain 'windows.by_id.window:42:7.geometry.frame'
+```
+
+`windows.items` is ordered for inspection. `windows.by_id` indexes the same
+observed windows by their `stable_id`, so a later step need not rely on a list
+position. Read a fresh frame after a window moves. Each window reports its
+semantic and geometry sources, match quality, monitor, visible region, and
+limits of the occlusion estimate. The `by_id` key comes from observation; do
+not construct one from an app name.
+
+## Use facts during an agent turn
+
+Start with the small, source-labelled context your runtime supplies. Query a
+specific path when the task needs more. After an action that can change the
+desktop, refresh the affected fact and inspect the outcome before reporting
+success. An old fact does not prove that the action caused a new state.
+
+Horner, for example, gets a bounded prompt package with his observed companion
+window frame and his local body state. The window metadata locates his visible
+presentation on the desktop; his physics runtime supplies foot position,
+contacts, and motion. During a longer plan he can use his terminal tool to run
+`worldline --fresh windows.active.geometry` or inspect a particular observed
+window. Horner identifies his own window and decides physical actions in his
+own runtime; WORLDLINE publishes generic desktop observations.
+
+## What an Operating Fact carries
+
+An Operating Fact has a value, source, observation time, validity, and revision.
+The source can be GNOME/Mutter, AT-SPI, D-Bus, `/proc`, a state file, or another
+machine interface. A fact can be direct, correlated, derived, or inferred. The
+receipt lets an agent check its basis and decide whether to refresh it.
+
+The daemon gathers a baseline on startup, follows GNOME signals when present,
+and reconciles sources with bounded reads. A source outage is reported as
+unavailable; a previous value is not presented as current. `worldline-daemon`
+and `worldlinectl` expose the revisioned store, fences, and waits over a private
+Unix socket. The no-argument socket `query` keeps its existing fact-snapshot
+response; selective `query` accepts `paths` and returns values plus receipts.
+For example, `worldlinectl query --path windows.active.geometry --fresh`
+requests one fresh fact with its evidence.
+
+## Install
+
+```bash
+python3 -m venv .venv
 . .venv/bin/activate
 pip install -e '.[dev]'
 pytest
-
-worldline os.kernel
-worldline windows.active.geometry
+worldline
 ```
 
-The persistent daemon and its control client are separate:
+The target desktop is GNOME on Wayland. Other sections continue to report what
+their available host sources can actually observe.
 
-```bash
-worldline-daemon --socket /tmp/worldline.sock
-```
-
-From another shell:
-
-```bash
-worldlinectl --socket /tmp/worldline.sock status
-worldlinectl --socket /tmp/worldline.sock observe
-worldlinectl --socket /tmp/worldline.sock query
-worldlinectl --socket /tmp/worldline.sock fence
-```
-
-## Identity and media
-
-The canonical mark and vector media family live in [`assets/brand/`](assets/brand/README.md).
-
-The symbol carries the same idea as the system:
-
-**a world, a present coordinate, an observation, and a trajectory through change.**
+For the model, evidence rules, and platform details, see
+[`Operating Fact`](docs/OPERATING_FACT.md),
+[`Architecture`](docs/ARCHITECTURE.md),
+[`Observation Sources`](docs/OBSERVATION_SOURCES.md), and
+[`GNOME/Wayland`](docs/GNOME_WAYLAND.md). The brand assets are in
+[`assets/brand/`](assets/brand/README.md).

@@ -1,5 +1,6 @@
 from worldline.model import Evidence, Fact
 from worldline.store import RevisionConflict, WorldStore
+from time import time
 
 
 def test_revision_changes_only_on_change():
@@ -58,3 +59,31 @@ def test_fresh_wait_accepts_new_evidence_for_equality():
     )
     assert ready
     assert revision > fence
+
+
+def test_refresh_is_fresh_evidence_without_claiming_value_changed():
+    store = WorldStore()
+    store.apply([Fact("window.7.x", 10, Evidence("mutter", observed_at=1))])
+    fence = store.fence()
+    store.apply([Fact("window.7.x", 10, Evidence("mutter", observed_at=2))])
+    assert not store.changed_after("window.7.x", fence)
+    fresh, _ = store.wait_for(
+        {"path": "window.7.x", "op": "eq", "value": 10,
+         "fresh_after": fence}, after_revision=fence, timeout=0.01,
+    )
+    assert fresh
+
+
+def test_expired_evidence_cannot_satisfy_value_wait():
+    store = WorldStore()
+    store.apply([Fact("window.x", 10, Evidence("test", expires_at=time() - 1))])
+    ready, _ = store.wait_for(
+        {"path": "window.x", "op": "eq", "value": 10},
+        after_revision=0, timeout=0.01,
+    )
+    assert not ready
+    ready, _ = store.wait_for(
+        {"path": "window.x", "op": "exists"},
+        after_revision=0, timeout=0.01,
+    )
+    assert not ready
