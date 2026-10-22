@@ -57,6 +57,21 @@ class GNOMEProvider(ObservationProvider):
                 if version:
                     facts.append(Fact(fact_key, version, evidence("command", {"command": command})))
 
+        # Ubuntu's Mutter package can be newer than the shell's reported
+        # version. Record the installed package independently: compatibility
+        # decisions must use evidence from the running distribution, not a
+        # guessed mapping between GNOME and Ubuntu release numbers.
+        if shutil.which("dpkg-query"):
+            for package, key in (
+                ("mutter-common", "gnome.mutter.package_version"),
+                ("gnome-shell", "gnome.shell.package_version"),
+            ):
+                version = _run(["dpkg-query", "-W", "-f=${Version}", package])
+                if version:
+                    facts.append(Fact(key, version, evidence(
+                        "dpkg-query", {"package": package},
+                    )))
+
         session_id = os.environ.get("XDG_SESSION_ID")
         if session_id and shutil.which("loginctl"):
             state = _run([

@@ -1,4 +1,8 @@
 name: CI
+
+# Match the last successful WORLDLINE run (2026-10-02):
+# the standard Ubuntu runner, Python 3.12, and normal pytest.
+# Standard GitHub-hosted minutes are covered by the private repo's plan quota.
 on:
   push:
     branches: [main, dev]
