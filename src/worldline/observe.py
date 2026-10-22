@@ -996,12 +996,22 @@ def _atspi_windows() -> dict[str, Any]:
                             extents.x, extents.y, extents.width, extents.height
                         )
                         pid = window.get_process_id()
-                        key = (pid, role, title, tuple(frame.values()))
+                        path = str(getattr(window, "path", "") or "")
+                        # The AT-SPI object path identifies this accessible for
+                        # its process lifetime.  A role id is not a window id.
+                        token = path.rsplit("/", 1)[-1] if path.startswith(
+                            "/org/a11y/atspi/accessible/"
+                        ) else ""
+                        stable_id = f"window:{pid}:{token}" if pid and token else None
+                        key = stable_id or (pid, role, title, tuple(frame.values()))
                         if key in seen:
                             continue
                         seen.add(key)
                         items.append(
                             {
+                                "id": int(token) if token.isdecimal() else None,
+                                "stable_id": stable_id,
+                                "accessible_path": path or None,
                                 "pid": pid,
                                 "app": app.name,
                                 "title": title,
@@ -1039,315 +1049,35 @@ def _atspi_windows() -> dict[str, Any]:
     }
 
 
-def _parse_winrects(payload: Any, *, version: Any = None) -> dict[str, Any]:
-    """Normalize a decoded WinRects payload into compositor window records."""
-
-    if not isinstance(payload, list):
-        return {
-            "source": "org.cua.WinRects",
-            "available": False,
-            "reason": "WinRects payload is not a window list",
-            "count": 0,
-            "items": [],
-        }
-
-    items: list[dict[str, Any]] = []
-    for entry in payload:
-        if not isinstance(entry, dict):
-            continue
-        try:
-            frame = window_geometry.rect(entry["x"], entry["y"], entry["w"], entry["h"])
-            if frame["width"] <= 0 or frame["height"] <= 0:
-                continue
-            pid = int(entry.get("pid") or 0)
-            title = str(entry.get("title") or "")
-            items.append(
-                {
-                    "id": int(entry["id"]) if entry.get("id") is not None else None,
-                    "pid": pid,
-                    "app": _text(f"/proc/{pid}/comm") if pid else None,
-                    "title": title,
-                    "role": "frame",
-                    "frame": frame,
-                    "buffer_origin": {
-                        "x": int(entry.get("buffer_x", entry["x"])),
-                        "y": int(entry.get("buffer_y", entry["y"])),
-                    },
-                    "focused": bool(entry.get("focused")),
-                    "minimized": bool(entry.get("minimized")),
-                    "visible": bool(entry.get("visible", True)),
-                    "stacking": int(entry["stacking"])
-                    if entry.get("stacking") is not None
-                    else None,
-                    "source": "org.cua.WinRects",
-                }
-            )
-        except (KeyError, TypeError, ValueError):
-            continue
-
-    return {
-        "source": "org.cua.WinRects",
-        "available": True,
-        "version": version,
-        "count": len(items),
-        "items": items,
-    }
-
-
-def _winrects_reply(raw: Any, *, version: Any = None) -> dict[str, Any]:
-    """Decode a ``GetRects`` D-Bus reply into a WinRects observation."""
-
-    if not raw:
-        return {
-            "source": "org.cua.WinRects",
-            "available": False,
-            "reason": "WinRects helper is not available",
-            "count": 0,
-            "items": [],
-        }
-    try:
-        payload = json.loads(raw[0] if isinstance(raw, tuple) else raw)
-    except (TypeError, json.JSONDecodeError) as exc:
-        return {
-            "source": "org.cua.WinRects",
-            "available": False,
-            "reason": f"{type(exc).__name__}: {exc}",
-            "count": 0,
-            "items": [],
-        }
-    return _parse_winrects(payload, version=version)
-
-
-def _compositor_windows() -> dict[str, Any]:
-    """Read exact frame rectangles from the Cua WinRects Shell helper."""
-
-    version = _dbus_call(
-        "org.cua.WinRects",
-        "/org/cua/WinRects",
-        "org.cua.WinRects",
-        "GetVersion",
-        timeout=0.5,
-    )
-    raw = _dbus_call(
-        "org.cua.WinRects",
-        "/org/cua/WinRects",
-        "org.cua.WinRects",
-        "GetRects",
-        timeout=0.75,
-    )
-    return _winrects_reply(
-        raw,
-        version=version[0] if isinstance(version, tuple) and version else None,
-    )
-
-
-_MATCH_CONFIDENCE = {
-    "pid_title_frame": 0.99,
-    "pid_title": 0.95,
-    "pid_partial_title": 0.8,
-    "title_frame": 0.75,
-    "pid_frame": 0.7,
-    "pid_only": 0.5,
-    "semantic_only": 0.5,
-    "compositor_only": 0.9,
-    "stale": 0.05,
-    "duplicate": 0.1,
-}
-
-
-def _title_state(first: Any, second: Any) -> str | None:
-    left = (first or "").strip().casefold()
-    right = (second or "").strip().casefold()
-    if not left or not right:
-        return None
-    if left == right:
-        return "exact"
-    if left in right or right in left:
-        return "partial"
-    return None
-
-
-def _match_evidence(
-    window: dict[str, Any], candidate: dict[str, Any]
-) -> dict[str, Any] | None:
-    """Score one semantic/compositor pair and describe the join evidence.
-
-    A join is only proposed when the evidence supports identity: the same
-    process (with a title or frame signal) or an exact cross-process title with
-    a frame overlap.  Geometry alone never joins unrelated processes.
-    """
-
-    pid = window.get("pid")
-    candidate_pid = candidate.get("pid")
-    same_pid = bool(pid and candidate_pid == pid)
-    title = _title_state(window.get("title"), candidate.get("title"))
-    overlap = window_geometry.overlap_fraction(window["frame"], candidate["frame"])
-    if not same_pid and not (title == "exact" and overlap > 0):
-        return None
-    if same_pid and title is None and overlap <= 0:
-        # Weak same-process pair: resolved only by the unambiguous-pid fallback.
-        return None
-
-    if same_pid and title == "exact" and overlap >= 0.5:
-        method = "pid_title_frame"
-    elif same_pid and title == "exact":
-        method = "pid_title"
-    elif same_pid and title == "partial":
-        method = "pid_partial_title"
-    elif same_pid and overlap >= 0.5:
-        method = "pid_frame"
-    else:
-        method = "title_frame"
-
-    score = 0.0
-    if title == "exact":
-        score += 100.0
-    elif title == "partial":
-        score += 35.0
-    score += overlap * 60.0
-    score -= min(
-        30.0, window_geometry.rect_distance(window["frame"], candidate["frame"]) / 40.0
-    )
-    if candidate.get("focused") and window.get("focused"):
-        score += 5.0
-    return {
-        "method": method,
-        "confidence": _MATCH_CONFIDENCE[method],
-        "band": "verified",
-        "score": round(score, 3),
-        "pid_match": same_pid,
-        "title_match": title,
-        "frame_overlap": overlap,
-    }
-
-
-def _join_windows(
-    semantic: list[dict[str, Any]], compositor: list[dict[str, Any]]
-) -> tuple[dict[int, dict[str, Any]], set[int]]:
-    """Join semantic windows to compositor frames by evidence strength.
-
-    Pairs are assigned strongest-first so a stale or untitled semantic object
-    cannot consume the compositor frame that belongs to a better-evidenced
-    sibling.  A final unambiguous same-process pass handles windows whose
-    titles are empty and whose geometry has moved between the two sources.
-    """
-
-    pairs: list[tuple[float, int, int, dict[str, Any]]] = []
-    for semantic_index, window in enumerate(semantic):
-        for compositor_index, candidate in enumerate(compositor):
-            evidence = _match_evidence(window, candidate)
-            if evidence is not None:
-                pairs.append(
-                    (evidence["score"], semantic_index, compositor_index, evidence)
-                )
-    pairs.sort(key=lambda pair: (-pair[0], pair[1], pair[2]))
-
-    joins: dict[int, dict[str, Any]] = {}
-    used_compositor: set[int] = set()
-    for _, semantic_index, compositor_index, evidence in pairs:
-        if semantic_index in joins or compositor_index in used_compositor:
-            continue
-        joins[semantic_index] = {
-            "candidate": compositor[compositor_index],
-            "evidence": evidence,
-        }
-        used_compositor.add(compositor_index)
-
-    # Empty titles and moved frames can leave one window on each side of a
-    # process.  That is still meaningful identity evidence, but only when the
-    # mapping is unambiguous.
-    remaining_semantic: dict[int, list[int]] = {}
-    remaining_compositor: dict[int, list[int]] = {}
-    for index, window in enumerate(semantic):
-        pid = window.get("pid")
-        if index not in joins and pid:
-            remaining_semantic.setdefault(pid, []).append(index)
-    for index, candidate in enumerate(compositor):
-        pid = candidate.get("pid")
-        if index not in used_compositor and pid:
-            remaining_compositor.setdefault(pid, []).append(index)
-    for pid, semantic_indexes in remaining_semantic.items():
-        compositor_indexes = remaining_compositor.get(pid, [])
-        if len(semantic_indexes) != 1 or len(compositor_indexes) != 1:
-            continue
-        semantic_index = semantic_indexes[0]
-        compositor_index = compositor_indexes[0]
-        joins[semantic_index] = {
-            "candidate": compositor[compositor_index],
-            "evidence": {
-                "method": "pid_only",
-                "confidence": _MATCH_CONFIDENCE["pid_only"],
-                "band": "verified",
-                "score": 0.0,
-                "pid_match": True,
-                "title_match": None,
-                "frame_overlap": window_geometry.overlap_fraction(
-                    semantic[semantic_index]["frame"],
-                    compositor[compositor_index]["frame"],
-                ),
-            },
-        }
-        used_compositor.add(compositor_index)
-
-    return joins, used_compositor
-
-
 def _semantic_exclusion(
     item: dict[str, Any],
     canonical: list[dict[str, Any]],
     screen: dict[str, Any] | None,
 ) -> tuple[str, str] | None:
-    """Classify an unmatched semantic frame that should not be canonical.
-
-    The rule is intentionally conservative and evidence-bearing: an item is
-    deduplicated only when it duplicates a represented window or has a
-    degenerate off-screen frame that cannot be a usable surface.
-    """
+    """Discard only demonstrably duplicate or degenerate AT-SPI records."""
 
     frame = item["frame"]
-    width, height = frame["width"], frame["height"]
-    title = (item.get("title") or "").strip()
-    pid = item.get("pid")
+    stable_id = item.get("stable_id")
     for other in canonical:
-        if not pid or other.get("pid") != pid:
+        if stable_id and stable_id == other.get("stable_id"):
+            return "duplicate", f"same AT-SPI accessible as {stable_id}"
+        if stable_id or other.get("stable_id"):
             continue
-        other_title = (other.get("title") or "").strip()
-        same_title = bool(
-            title and other_title and title.casefold() == other_title.casefold()
-        )
-        if not same_title:
-            continue
-        # A second compositor-only window with the same identity may be a real
-        # sibling (for example two documents with the same title), so only
-        # collapse when no unpaired compositor frame remains.
-        has_unpaired_geometry = any(
-            candidate.get("status") == "geometry_only"
-            and (candidate.get("pid") or None) == (pid or None)
-            and (candidate.get("title") or "").strip().casefold() == title.casefold()
-            for candidate in canonical
-        )
-        if not has_unpaired_geometry:
-            label = other.get("stable_id") or other.get("id") or "another frame"
-            return (
-                "duplicate",
-                f"same process and title as {label}; no unpaired compositor frame",
-            )
+        if (
+            item.get("pid") == other.get("pid")
+            and item.get("role") == other.get("role")
+            and item.get("title") == other.get("title")
+            and frame == other.get("frame")
+        ):
+            return "duplicate", "same process, role, title and extents"
 
     visible = (
         window_geometry.intersection(frame, screen) if screen is not None else frame
     )
     if visible is None and window_geometry.area(frame) <= 1:
-        return (
-            "stale",
-            f"degenerate off-screen frame {width}x{height} at "
-            f"({frame['x']},{frame['y']})",
-        )
-    if visible is None and not title and window_geometry.area(frame) <= 64:
-        return (
-            "stale",
-            f"untitled off-screen frame {width}x{height} at "
-            f"({frame['x']},{frame['y']})",
-        )
+        return "stale", f"degenerate off-screen frame at ({frame['x']},{frame['y']})"
+    if visible is None and not item.get("title") and window_geometry.area(frame) <= 64:
+        return "stale", f"untitled off-screen frame at ({frame['x']},{frame['y']})"
     return None
 
 
@@ -1359,6 +1089,7 @@ def _active_summary(items: list[dict[str, Any]]) -> dict[str, Any] | None:
         return None
     return {
         "id": active.get("id"),
+        "stable_id": active.get("stable_id"),
         "pid": active.get("pid"),
         "app": active.get("app"),
         "title": active.get("title"),
@@ -1367,270 +1098,138 @@ def _active_summary(items: list[dict[str, Any]]) -> dict[str, Any] | None:
 
 
 def _windows() -> dict[str, Any]:
-    """Collect window identities, state and canonical frame geometry.
+    """Observe semantic windows and screen extents without a Shell helper.
 
-    AT-SPI supplies semantic identity (application, title, role, modal state).
-    The WinRects compositor helper supplies exact frame rectangles, stable
-    window ids, stacking order and visibility.  When both exist the window is
-    joined by process, title and geometry evidence; neither source is required.
-
-    Unmatched semantic frames are retained as canonical windows when they look
-    like real surfaces.  Degenerate stale frames and duplicates are moved to
-    ``deduplicated`` with an explicit reason, so the window count describes
-    distinct windows without discarding the original observation.
+    AT-SPI supplies process identity, title, states and component extents.
+    Mutter DisplayConfig supplies the monitor layout.  Neither source proves
+    compositor frame borders, stacking, occlusion or visible pixels; those
+    remain unknown in the geometry description.
     """
 
     atspi = _atspi_windows()
-    compositor = _compositor_windows()
     display = _display()
     monitors = display.get("monitors") or []
     screen = display.get("screen")
-
-    atspi_items: list[dict[str, Any]] = list(atspi.get("items") or [])
-    compositor_items: list[dict[str, Any]] = list(compositor.get("items") or [])
-    joins, used = _join_windows(atspi_items, compositor_items)
-    merged: list[dict[str, Any]] = []
-
-    for index, window in enumerate(atspi_items):
-        item = dict(window)
-        join = joins.get(index)
-        if join is not None:
-            match = join["candidate"]
-            item.update(
-                {
-                    "id": match.get("id"),
-                    "pid": match.get("pid") or window.get("pid"),
-                    "app": window.get("app") or match.get("app"),
-                    "title": match.get("title") or window.get("title"),
-                    "frame": match["frame"],
-                    "buffer_origin": match.get("buffer_origin"),
-                    "focused": bool(match.get("focused") or window.get("focused")),
-                    "minimized": bool(
-                        match.get("minimized") or window.get("minimized")
-                    ),
-                    "visible": bool(match.get("visible", True)),
-                    "stacking": match.get("stacking"),
-                    "sources": ["at-spi2", "org.cua.WinRects"],
-                    "geometry_source": "org.cua.WinRects",
-                    "status": "verified",
-                    "confidence": join["evidence"]["confidence"],
-                    "match": join["evidence"],
-                }
-            )
-        else:
-            item.update(
-                {
-                    "sources": ["at-spi2"],
-                    "geometry_source": "at-spi2",
-                    "status": "semantic_only",
-                    "confidence": _MATCH_CONFIDENCE["semantic_only"],
-                    "match": {
-                        "method": "semantic_only",
-                        "confidence": _MATCH_CONFIDENCE["semantic_only"],
-                        "band": "semantic_only",
-                        "score": None,
-                        "pid_match": None,
-                        "title_match": None,
-                        "frame_overlap": None,
-                    },
-                }
-            )
-        merged.append(item)
-
-    for index, candidate in enumerate(compositor_items):
-        if index in used:
-            continue
-        item = dict(candidate)
-        item.update(
-            {
-                "sources": ["org.cua.WinRects"],
-                "geometry_source": "org.cua.WinRects",
-                "status": "geometry_only",
-                "confidence": _MATCH_CONFIDENCE["compositor_only"],
-                "match": {
-                    "method": "compositor_only",
-                    "confidence": _MATCH_CONFIDENCE["compositor_only"],
-                    "band": "geometry_only",
-                    "score": None,
-                    "pid_match": None,
-                    "title_match": None,
-                    "frame_overlap": None,
-                },
-            }
-        )
-        merged.append(item)
-
+    observed: list[dict[str, Any]] = list(atspi.get("items") or [])
     if not monitors and not screen:
-        frames = [item["frame"] for item in merged if item.get("frame")]
-        if frames:
-            screen = window_geometry.union(frames)
-            if screen is not None:
-                screen = {
-                    "x": 0,
-                    "y": 0,
-                    "width": screen["width"],
-                    "height": screen["height"],
-                }
+        screen = window_geometry.union(
+            item["frame"] for item in observed if item.get("frame")
+        )
 
-    # Stable ids exist before deduplication so exclusion reasons can cite them.
-    for item in merged:
-        if item.get("id") is not None and item.get("pid") is not None:
-            item["stable_id"] = f"window:{item['pid']}:{item['id']}"
-
-    verified = [item for item in merged if item["status"] != "semantic_only"]
-    semantic_only = [item for item in merged if item["status"] == "semantic_only"]
-    canonical: list[dict[str, Any]] = list(verified)
+    canonical: list[dict[str, Any]] = []
     deduplicated: list[dict[str, Any]] = []
-    for item in semantic_only:
+    for window in observed:
+        item = dict(window)
+        item.update({
+            "sources": ["at-spi2"],
+            "geometry_source": "at-spi2",
+            "status": "semantic_only",
+            "confidence": 0.5,
+            "match": {
+                "method": "semantic_only",
+                "confidence": 0.5,
+                "band": "semantic_only",
+                "score": None,
+                "pid_match": None,
+                "title_match": None,
+                "frame_overlap": None,
+            },
+            "stacking": None,
+        })
         exclusion = _semantic_exclusion(item, canonical, screen)
-        if exclusion is None:
-            canonical.append(item)
-            continue
-        status, reason = exclusion
-        item.update(
-            {
+        if exclusion is not None:
+            status, reason = exclusion
+            item.update({
                 "status": status,
                 "reason": reason,
-                "confidence": _MATCH_CONFIDENCE[status],
-                "match": {
-                    **item["match"],
-                    "band": status,
-                    "confidence": _MATCH_CONFIDENCE[status],
-                },
-            }
-        )
-        deduplicated.append(item)
+                "confidence": 0.05 if status == "stale" else 0.1,
+                "match": {**item["match"], "band": status},
+            })
+            deduplicated.append(item)
+            continue
+        canonical.append(item)
 
-    merged = canonical
-    for item in merged:
-        if item.get("stacking") is None:
-            item["stacking"] = None
+    for item in canonical:
         frame = item["frame"]
-        item["x"] = frame["x"]
-        item["y"] = frame["y"]
-        item["width"] = frame["width"]
-        item["height"] = frame["height"]
-        item["active"] = bool(item.get("active", False) or item.get("focused", False))
-        item["visible"] = bool(item.get("visible", not item.get("minimized", False)))
-        item["maximized"] = bool(item.get("maximized", False))
-        item["modal"] = bool(item.get("modal", False))
-        item["minimized"] = bool(item.get("minimized", False))
-        item["shaded"] = bool(item.get("shaded", False))
-        item["focused"] = bool(item.get("focused", False))
+        item.update({
+            "x": frame["x"],
+            "y": frame["y"],
+            "width": frame["width"],
+            "height": frame["height"],
+            "active": bool(item.get("active") or item.get("focused")),
+            "visible": bool(item.get("visible", not item.get("minimized", False))),
+            "maximized": bool(item.get("maximized", False)),
+            "modal": bool(item.get("modal", False)),
+            "minimized": bool(item.get("minimized", False)),
+            "shaded": bool(item.get("shaded", False)),
+            "focused": bool(item.get("focused", False)),
+        })
         item["state"] = {
-            "active": item["active"],
-            "focused": item["focused"],
-            "visible": item["visible"],
-            "minimized": item["minimized"],
-            "maximized": item["maximized"],
-            "shaded": item["shaded"],
-            "modal": item["modal"],
-        }
-
-    for item in merged:
-        stacking = item.get("stacking")
-        occluders: list[dict[str, int]] = []
-        occlusion_uncertain = False
-        if stacking is not None:
-            higher = [
-                other
-                for other in merged
-                if other.get("stacking") is not None
-                and int(other["stacking"]) > int(stacking)
-                and other.get("visible", True)
-                and not other.get("minimized", False)
-            ]
-            occluders = [other["frame"] for other in higher]
-            occlusion_uncertain = any(
-                other.get("shaded", False)
-                and window_geometry.intersection(item["frame"], other["frame"])
-                is not None
-                for other in higher
+            key: item[key] for key in (
+                "active", "focused", "visible", "minimized", "maximized",
+                "shaded", "modal",
             )
+        }
         item["geometry"] = window_geometry.describe(
-            item["frame"],
+            frame,
             monitors=monitors,
             screen=screen,
-            buffer_origin=item.get("buffer_origin"),
-            occluders=occluders,
-            z_index=stacking,
             visible=item["visible"],
             minimized=item["minimized"],
             shaded=item["shaded"],
-            occlusion_uncertain=occlusion_uncertain,
         )
+        item["geometry"]["frame_source"] = "at-spi2-component-extents"
 
-    # Present topmost windows first; AT-SPI-only windows have no proven z-order.
-    merged.sort(
-        key=lambda item: (
-            item.get("stacking") is None,
-            -(item.get("stacking") or 0),
-            item.get("app") or "",
-            item.get("title") or "",
-        )
-    )
-
-    available = bool(atspi.get("available") or compositor.get("available"))
-    if atspi.get("available"):
-        source = "at-spi2"
-    elif compositor.get("available"):
-        source = compositor.get("source", "org.cua.WinRects")
-    else:
-        # AT-SPI is the canonical semantic source even when unavailable.
-        source = "at-spi2"
+    # AT-SPI enumeration supplies no compositor stacking order.
+    canonical.sort(key=lambda item: (
+        not item["active"], item.get("app") or "", item.get("title") or ""
+    ))
+    available = bool(atspi.get("available"))
     result: dict[str, Any] = {
-        "source": source,
+        "source": "at-spi2",
         "available": available,
-        "count": len(merged),
-        "items": merged,
-        "by_id": {item["stable_id"]: item for item in merged if item.get("stable_id")},
+        "count": len(canonical),
+        "items": canonical,
+        "by_id": {item["stable_id"]: item for item in canonical if item.get("stable_id")},
         "deduplicated": deduplicated,
-        "active": _active_summary(merged),
+        "active": _active_summary(canonical),
         "screen": screen,
         "monitors": monitors,
-        "stacking_order": "bottom-to-top",
-        "semantic_source": atspi.get("source", "at-spi2"),
-        "geometry_source": compositor.get("source")
-        if compositor.get("available")
-        else atspi.get("source", "at-spi2"),
+        "stacking_order": None,
+        "semantic_source": "at-spi2",
+        "geometry_source": "at-spi2",
         "counts": {
-            "canonical": len(merged),
-            "semantic": len(atspi_items),
-            "geometry": len(compositor_items),
-            "verified": sum(1 for item in merged if item.get("status") == "verified"),
-            "semantic_only": sum(
-                1 for item in merged if item.get("status") == "semantic_only"
-            ),
-            "geometry_only": sum(
-                1 for item in merged if item.get("status") == "geometry_only"
-            ),
+            "canonical": len(canonical),
+            "semantic": len(observed),
+            "geometry": len(canonical),
+            "verified": 0,
+            "semantic_only": len(canonical),
+            "geometry_only": 0,
             "deduplicated": len(deduplicated),
-            "stale": sum(1 for item in deduplicated if item.get("status") == "stale"),
-            "duplicate": sum(
-                1 for item in deduplicated if item.get("status") == "duplicate"
-            ),
+            "stale": sum(item["status"] == "stale" for item in deduplicated),
+            "duplicate": sum(item["status"] == "duplicate" for item in deduplicated),
         },
         "sources": {
             "semantic": {
-                "name": atspi.get("source", "at-spi2"),
-                "available": bool(atspi.get("available")),
+                "name": "at-spi2",
+                "available": available,
                 "reason": atspi.get("reason"),
                 "count": atspi.get("count", 0),
             },
             "geometry": {
-                "name": compositor.get("source", "org.cua.WinRects"),
-                "available": bool(compositor.get("available")),
-                "reason": compositor.get("reason"),
-                "version": compositor.get("version"),
-                "count": compositor.get("count", 0),
+                "name": "at-spi2",
+                "available": available,
+                "reason": atspi.get("reason"),
+                "count": len(canonical),
+                "limitations": [
+                    "component extents may differ from compositor frames",
+                    "stacking and pixel visibility are not observed",
+                ],
             },
         },
     }
     if not available:
-        reasons = [
-            value for value in (atspi.get("reason"), compositor.get("reason")) if value
-        ]
-        result["reason"] = "; ".join(reasons) or "no window source available"
+        result["reason"] = atspi.get("reason") or "accessibility bus is not reachable"
     return result
 
 

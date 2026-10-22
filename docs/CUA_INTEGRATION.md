@@ -89,6 +89,6 @@ It does not install, restart, or mutate the driver as part of ordinary observati
 
 GNOME/Mutter is a versioned platform adapter, not WORLDLINE's ontology.
 
-WORLDLINE consumes stable facts such as session state, AT-SPI reachability and observed compositor/runtime versions. Window geometry, exact activation and foreground proof remain Cua/GNOME-helper responsibilities.
+WORLDLINE consumes stable facts such as session state, AT-SPI reachability and observed compositor/runtime versions. It also reports AT-SPI window extents with their provenance and limits. Exact compositor frames, stacking, activation and foreground proof remain Cua/GNOME integration responsibilities; WORLDLINE does not depend on a Cua window helper.
 
 That lets GNOME 51 evolve without turning the truth core into a Mutter API compatibility layer.

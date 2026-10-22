@@ -21,8 +21,12 @@ For the GNOME desktop, preferred sources are:
 1. environment and session metadata;
 2. system services (`logind`, NetworkManager, UPower);
 3. AT-SPI semantic events/state;
-4. Cua's exact GNOME integration for window/activation geometry;
+4. Mutter DisplayConfig for monitor layout;
 5. XDG ScreenCast / PipeWire when pixels are required.
+
+Window titles, states and component extents come from AT-SPI. Exact compositor
+frames, stacking and pixel visibility are outside this observer's evidence;
+they remain unknown in WORLDLINE's window facts.
 
 ## What changes with GNOME
 

@@ -7,6 +7,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -18,6 +19,38 @@ from .daemon import default_socket
 from .observe import sections
 
 _COMPACT = (",", ":")
+
+
+def _daemon_runtime() -> tuple[str, dict[str, str]]:
+    """Choose an interpreter that can read AT-SPI on this host.
+
+    An isolated virtualenv may contain PyGObject without the matching native
+    ``_gi`` extension.  The normal system interpreter often has the working
+    distro bindings.  Pass this pure-Python package's path explicitly when
+    choosing that interpreter.
+    """
+
+    environment = os.environ.copy()
+    package_root = str(Path(__file__).resolve().parent.parent)
+    environment["PYTHONPATH"] = os.pathsep.join(filter(None, (
+        package_root, environment.get("PYTHONPATH", "")
+    )))
+    candidates = dict.fromkeys((sys.executable, shutil.which("python3"), "/usr/bin/python3"))
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            probe = subprocess.run(
+                [candidate, "-c", "import pyatspi; import worldline.daemon"],
+                env=environment, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL, timeout=3, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0:
+            return candidate, environment
+    # Other observations still work when this host has no AT-SPI binding.
+    return sys.executable, environment
 
 
 def dumps(value: Any, *, pretty: bool = False) -> str:
@@ -59,10 +92,12 @@ def _connect(path: str, op: str, args: dict[str, Any]) -> dict[str, Any]:
         try:
             return request(path, op, args, timeout=1.0)
         except (FileNotFoundError, ConnectionRefusedError, ValueError, json.JSONDecodeError):
+            daemon_python, daemon_environment = _daemon_runtime()
             process = subprocess.Popen(
-                [sys.executable, "-m", "worldline.daemon", "--socket", path],
+                [daemon_python, "-m", "worldline.daemon", "--socket", path],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True,
+                env=daemon_environment,
             )
             deadline = time.monotonic() + 20
             while time.monotonic() < deadline:

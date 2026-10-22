@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -36,6 +37,22 @@ def run(capsys, *args):
     code = cli.main(list(args))
     captured = capsys.readouterr()
     return code, captured.out, captured.err
+
+
+def test_daemon_uses_an_interpreter_with_working_atspi(monkeypatch):
+    checked = []
+    monkeypatch.setattr(cli.sys, "executable", "/broken-venv/python")
+    monkeypatch.setattr(cli.shutil, "which", lambda name: "/usr/bin/python3")
+
+    def probe(command, **kwargs):
+        checked.append(command[0])
+        return SimpleNamespace(returncode=1 if command[0] == "/broken-venv/python" else 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", probe)
+    executable, environment = cli._daemon_runtime()
+    assert executable == "/usr/bin/python3"
+    assert checked == ["/broken-venv/python", "/usr/bin/python3"]
+    assert environment["PYTHONPATH"].split(":")[0].endswith("/src")
 
 
 def test_scalar_and_multiple_path_queries_keep_value_shape(capsys, connected):

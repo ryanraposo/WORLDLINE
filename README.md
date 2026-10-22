@@ -43,12 +43,13 @@ worldline windows.by_id
 worldline --explain 'windows.by_id.window:42:7.geometry.frame'
 ```
 
-`windows.items` is ordered for inspection. `windows.by_id` indexes the same
-observed windows by their `stable_id`, so a later step need not rely on a list
-position. Read a fresh frame after a window moves. Each window reports its
-semantic and geometry sources, match quality, monitor, visible region, and
-limits of the occlusion estimate. The `by_id` key comes from observation; do
-not construct one from an app name.
+`windows.items` is ordered for inspection. `windows.by_id` indexes windows
+whose AT-SPI process and accessible object path provide a `stable_id`, so a
+later step need not rely on a list position. Read fresh extents after a window
+moves. AT-SPI supplies titles, states and component extents; Mutter supplies
+monitor layout. These extents may differ from compositor frames, and WORLDLINE
+does not know stacking or pixel occlusion. Geometry reports those limits rather
+than claiming a window is topmost. Do not construct an ID from an app name.
 
 ## Use facts during an agent turn
 
@@ -93,6 +94,9 @@ worldline
 
 The target desktop is GNOME on Wayland. Other sections continue to report what
 their available host sources can actually observe.
+If the virtualenv's PyGObject binding is incomplete, the CLI starts the
+observation daemon with a working system Python and loads this checkout there.
+If no AT-SPI binding is available, window facts report the source failure.
 
 For the model, evidence rules, and platform details, see
 [`Operating Fact`](docs/OPERATING_FACT.md),

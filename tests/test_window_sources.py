@@ -1,98 +1,45 @@
-import json
+import sys
+from types import SimpleNamespace
 
-from worldline.observe import _display_monitors, _parse_winrects, _winrects_reply
-
-
-def rect(x, y, width, height):
-    return {"x": x, "y": y, "width": width, "height": height}
+import worldline.observe as observe_module
+from worldline.observe import _atspi_windows, _display_monitors
 
 
-def test_winrects_payload_is_normalized_and_malformed_entries_are_skipped():
-    payload = [
-        {
-            "id": 7,
-            "pid": 4242,
-            "title": "ChatGPT",
-            "x": 415,
-            "y": 176,
-            "w": 1090,
-            "h": 760,
-            "buffer_x": 415,
-            "buffer_y": 176,
-            "focused": True,
-            "visible": True,
-            "stacking": 1,
-        },
-        {
-            "id": 8,
-            "pid": 4243,
-            "title": "",
-            "x": 10,
-            "y": 20,
-            "w": 30,
-            "h": 40,
-            "buffer_x": 5,
-            "buffer_y": 6,
-            "focused": False,
-            "minimized": True,
-            "visible": False,
-            "stacking": None,
-        },
-        {"id": 9, "pid": 4244, "x": 0, "y": 0, "w": 0, "h": 100},
-        {"id": 10, "pid": "not-a-pid", "x": 0, "y": 0, "w": 10, "h": 10},
-        {"id": 11, "pid": 4245, "title": "missing geometry"},
-        "not a window",
-        None,
-    ]
+def test_atspi_object_path_provides_window_identity(monkeypatch):
+    class Window:
+        path = "/org/a11y/atspi/accessible/17"
+        name = "Draft"
 
-    result = _parse_winrects(payload, version=8)
+        def getRoleName(self):
+            return "frame"
 
-    assert result["source"] == "org.cua.WinRects"
-    assert result["available"] is True
-    assert result["version"] == 8
-    assert result["count"] == 2
-    first, second = result["items"]
+        def getState(self):
+            return SimpleNamespace(getStates=lambda: [SimpleNamespace(value_nick="showing")])
 
-    assert first["id"] == 7
-    assert first["pid"] == 4242
-    assert first["title"] == "ChatGPT"
-    assert first["role"] == "frame"
-    assert first["frame"] == rect(415, 176, 1090, 760)
-    assert first["buffer_origin"] == {"x": 415, "y": 176}
-    assert first["focused"] is True
-    assert first["visible"] is True
-    assert first["stacking"] == 1
-    assert first["source"] == "org.cua.WinRects"
+        def queryComponent(self):
+            return SimpleNamespace(getExtents=lambda _coords: SimpleNamespace(
+                x=20, y=30, width=400, height=300
+            ))
 
-    assert second["id"] == 8
-    assert second["title"] == ""
-    assert second["frame"] == rect(10, 20, 30, 40)
-    assert second["buffer_origin"] == {"x": 5, "y": 6}
-    assert second["minimized"] is True
-    assert second["visible"] is False
-    assert second["stacking"] is None
+        def get_process_id(self):
+            return 4242
 
+    class App(list):
+        name = "Editor"
 
-def test_winrects_reply_accepts_a_dbus_tuple_and_json_string():
-    payload = [{"id": 1, "pid": 2, "title": "x", "x": 1, "y": 2, "w": 3, "h": 4}]
-    assert _winrects_reply((json.dumps(payload),))["count"] == 1
-    assert _winrects_reply(json.dumps(payload))["count"] == 1
-
-
-def test_winrects_reply_reports_missing_invalid_and_non_list_payloads():
-    missing = _winrects_reply(None)
-    assert missing["available"] is False
-    assert "not available" in missing["reason"]
-
-    invalid = _winrects_reply("{not json")
-    assert invalid["available"] is False
-    assert "JSONDecodeError" in invalid["reason"]
-
-    non_list = _winrects_reply("{}")
-    assert non_list["available"] is False
-    assert "not a window list" in non_list["reason"]
-
-    assert _parse_winrects({"windows": []})["available"] is False
+    app = App([Window()])
+    monkeypatch.setattr(observe_module, "_run", lambda *_args, **_kwargs: (0, "", ""))
+    monkeypatch.setitem(sys.modules, "pyatspi", SimpleNamespace(
+        Registry=SimpleNamespace(getDesktop=lambda _index: [app]),
+        DESKTOP_COORDS=0,
+    ))
+    observed = _atspi_windows()
+    assert observed["available"] is True
+    assert observed["count"] == 1
+    item = observed["items"][0]
+    assert item["id"] == 17
+    assert item["stable_id"] == "window:4242:17"
+    assert item["frame"] == {"x": 20, "y": 30, "width": 400, "height": 300}
 
 
 def test_mutter_state_maps_modes_scales_and_transforms():

@@ -1,10 +1,8 @@
-"""Pure geometry for canonical desktop windows.
+"""Pure desktop rectangle geometry with explicit observation limits.
 
-The compositor reports window frames in the logical desktop coordinate space
-used by Mutter: one unit is one logical pixel, the origin is the top-left of the
-desktop, and ``y`` grows downward.  This module never guesses a window's
-identity or visibility state; it only describes rectangles against the display
-layout and against higher windows in the compositor's stacking order.
+Coordinates are logical desktop pixels with top-left origin and downward y.
+The caller supplies frame provenance and any known compositor stacking data;
+this module does not infer either from a rectangle alone.
 """
 
 from __future__ import annotations
@@ -225,7 +223,7 @@ def describe(
     occlusion_uncertain: bool = False,
     work_area: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Describe one window frame against the display and stacking order.
+    """Describe observed window extents against the display.
 
     ``visible``/``minimized`` describe presentation, not frame clipping.
     ``shaded`` means only the titlebar is expected on screen, so the exact
@@ -397,12 +395,15 @@ def describe(
                 "a shaded window higher in the stack makes exact coverage unknown"
             ]
     if z_index is not None:
-        # WinRects numbers windows from the bottom of the stack (0) upward.
+        # A supplied compositor stack numbers windows bottom to top.
         exposure["stacking_index"] = int(z_index)
         exposure["stacking_order"] = "bottom-to-top"
-    elif exposure.get("topmost") is not None:
-        # Without a compositor stack there is no evidence for a topmost claim.
+    elif visible and not minimized and not shaded:
+        # AT-SPI extents do not establish occlusion or compositor z-order.
         exposure["topmost"] = None
+        exposure["occlusion_known"] = False
+        exposure["exposed_fraction_upper_bound"] = True
+        exposure["limitations"] = ["compositor stacking is not observed"]
     result["exposure"] = exposure
     return result
 
