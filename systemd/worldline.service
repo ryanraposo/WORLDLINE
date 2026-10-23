@@ -1,0 +1,16 @@
+[Unit]
+Description=WORLDLINE operating facts daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=@WORLDLINE_SRC@
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m worldline.daemon
+Restart=on-failure
+RestartSec=1s
+TimeoutStopSec=10s
+
+[Install]
+WantedBy=graphical-session.target

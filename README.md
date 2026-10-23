@@ -26,6 +26,18 @@ The CLI starts its private observation daemon on first use. The daemon uses a
 Python interpreter with the system AT-SPI binding for window observations.
 Run `pytest` to check the installation and repository tests.
 
+To keep the daemon running for the graphical session and restart it when Git
+updates the checkout, install the user service:
+
+```bash
+./scripts/install_user_service.sh
+```
+
+The service runs this checkout directly. The installer configures repository
+hooks that restart an active service after pull/merge or checkout; it does not
+fetch or apply remote updates automatically. Check it with
+`systemctl --user status worldline.service`.
+
 ## Use
 
 ```bash
