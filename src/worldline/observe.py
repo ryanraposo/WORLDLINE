@@ -1239,6 +1239,27 @@ def _windows() -> dict[str, Any]:
         item["geometry"]["frame_source"] = "cua-gnome-shell-frame"
         canonical.append(item)
 
+    # The helper reports bottom-to-top stacking. Rectangle overlap gives an
+    # upper bound on exposure; it cannot establish pixel visibility through
+    # transparent surfaces.
+    for item in canonical:
+        stacking = item.get("stacking")
+        if not isinstance(stacking, int):
+            continue
+        occluders = [other["frame"] for other in canonical
+                     if isinstance(other.get("stacking"), int)
+                     and other["stacking"] > stacking
+                     and other.get("visible", True)
+                     and not other.get("minimized", False)]
+        item["geometry"] = window_geometry.describe(
+            item["frame"], monitors=monitors, screen=screen,
+            visible=item["visible"], minimized=item["minimized"],
+            shaded=item.get("shaded", False), occluders=occluders,
+            z_index=stacking)
+        item["geometry"]["frame_source"] = (
+            "cua-gnome-shell-frame" if item.get("compositor_verified")
+            else "at-spi2-component-extents")
+
     # AT-SPI enumeration alone supplies no compositor stacking order.
     canonical.sort(key=lambda item: (
         not item["active"], item.get("app") or "", item.get("title") or ""
@@ -1252,6 +1273,13 @@ def _windows() -> dict[str, Any]:
         "by_id": {item["stable_id"]: item for item in canonical if item.get("stable_id")},
         "deduplicated": deduplicated,
         "active": _active_summary(canonical),
+        "focus": next(({
+            "stable_id": item.get("stable_id"),
+            "compositor_id": item.get("compositor_id"),
+            "pid": item.get("pid"),
+            "source": item.get("geometry_source"),
+            "verified": bool(item.get("compositor_verified")),
+        } for item in canonical if item.get("focused")), None),
         "screen": screen,
         "monitors": monitors,
         "stacking_order": [item.get("stable_id") for item in sorted(

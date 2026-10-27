@@ -109,3 +109,32 @@ def test_exact_compositor_frame_preserves_component_extents(monkeypatch):
     assert window["component_extents"] == {"x": 11, "y": 22, "width": 400, "height": 300}
     assert window["geometry"]["frame_source"] == "cua-gnome-shell-frame"
     assert window["compositor_id"] == 7 and window["compositor_verified"]
+
+
+def test_compositor_stacking_bounds_exposure_and_reports_verified_focus(monkeypatch):
+    monkeypatch.setattr(observe, "_atspi_windows", lambda: {
+        "available": True, "count": 1, "items": [{
+            "pid": 42, "stable_id": "window:42:accessible", "title": "Editor",
+            "app": "Editor", "frame": {"x": 10, "y": 10, "width": 100, "height": 100},
+            "focused": False}]})
+    monkeypatch.setattr(observe, "_display", lambda: {
+        "screen": {"x": 0, "y": 0, "width": 500, "height": 500},
+        "monitors": []})
+    monkeypatch.setattr(observe, "_compositor_windows", lambda: {
+        "available": True, "source": "cua-gnome-shell", "helper_api": 8,
+        "items": [
+            {"pid": 42, "id": 7, "title": "Editor", "x": 10, "y": 10,
+             "w": 100, "h": 100, "focused": False, "visible": True,
+             "minimized": False, "stacking": 0},
+            {"pid": 55, "id": 9, "title": "Dialog", "x": 60, "y": 10,
+             "w": 100, "h": 100, "focused": True, "visible": True,
+             "minimized": False, "stacking": 1},
+        ]})
+    world = observe._windows()
+    editor = world["by_id"]["window:42:accessible"]
+    assert editor["geometry"]["exposure"]["occlusion_known"] is True
+    assert editor["geometry"]["exposure"]["exposed_fraction"] == 0.5
+    assert editor["geometry"]["exposure"]["pixel_accurate"] is False
+    assert world["stacking_order"] == ["window:42:accessible", "window:55:9"]
+    assert world["focus"]["compositor_id"] == 9
+    assert world["focus"]["verified"] is True

@@ -38,6 +38,18 @@ hooks that restart an active service after pull/merge or checkout; it does not
 fetch or apply remote updates automatically. Check it with
 `systemctl --user status worldline.service`.
 
+## Update
+
+From the existing checkout, run:
+
+```bash
+./update.sh
+```
+
+This fast forwards the current branch, refreshes the virtual environment,
+restarts an installed user service (or the on-demand daemon), and checks a
+fresh operating fact. It stops if the checkout has local changes.
+
 ## Use
 
 ```bash
@@ -70,7 +82,8 @@ DisplayConfig supplies monitor layout. When the Cua GNOME helper is hosted by
 the attested GNOME Shell, its stable window IDs and exact compositor frames
 join unique process/title/overlap matches; AT-SPI component extents remain
 separate. Unmatched compositor windows remain geometry-only. Every frame
-names its source. Pixel occlusion remains uncertain.
+names its source. Compositor stacking bounds rectangle exposure; transparency
+and pixel visibility remain uncertain.
 
 The socket is protocol 1 and rejects other versions before mutation. GWCU and
 Horner share its revision domain: `fence` seals a pre-action boundary, `event`
