@@ -53,24 +53,41 @@ def test_one_revision_domain_rejects_stale_and_focus_conflicts():
 
 def test_failed_actuator_cannot_become_verified_receipt():
     daemon = WorldlineDaemon()
-    baseline = rpc(daemon, "fence")["result"]["revision"]
+    fence = rpc(daemon, "fence")["result"]
+    baseline, domain = fence["revision"], fence["domain_id"]
     rpc(daemon, "event", event={"source": "cua",
                                  "facts": {"ui.result": "done"}})
     forged = rpc(daemon, "receipt", owner="cua", action_id="a",
-                 before_revision=baseline, action_ok=True,
+                 before_revision=baseline, domain_id=domain, action_ok=True,
                  predicate={"path": "ui.result", "op": "eq", "value": "done"})
     assert forged["result"]["outcome"] == "unverified"
     rpc(daemon, "event", event={"source": "atspi",
                                  "facts": {"ui.result": "done"}})
     failed = rpc(daemon, "receipt", owner="cua", action_id="a",
-                 before_revision=baseline, action_ok=False,
+                 before_revision=baseline, domain_id=domain, action_ok=False,
                  predicate={"path": "ui.result", "op": "eq", "value": "done"})
     assert failed["result"]["outcome"] == "failed"
     verified = rpc(daemon, "receipt", owner="cua", action_id="a",
-                   before_revision=baseline, action_ok=True,
+                   before_revision=baseline, domain_id=domain, action_ok=True,
                    predicate={"path": "ui.result", "op": "eq", "value": "done"})
     assert verified["result"]["outcome"] == "verified"
-    assert verified["result"]["observation"]["evidence"]["source"] == "atspi"
+    assert verified["result"]["observation"]["evidence"]["source"] == "rpc:atspi"
+    assert rpc(daemon, "receipt", owner="cua", domain_id="previous-daemon",
+               before_revision=baseline, action_ok=True,
+               predicate={"path": "ui.result", "op": "exists"})["error"]["code"] == "revision_domain_mismatch"
+
+
+def test_branch_wait_returns_its_observation_witness():
+    daemon = WorldlineDaemon()
+    fence = rpc(daemon, "fence")["result"]
+    rpc(daemon, "event", event={"source": "atspi", "facts": {"ui.dialog": "Saved"}})
+    wait = rpc(daemon, "wait", after_revision=fence["revision"], branches=[
+        {"id": "success", "predicates": [{"path": "ui.dialog", "op": "eq", "value": "Saved"}]},
+        {"id": "failure", "predicates": [{"path": "ui.dialog", "op": "eq", "value": "Error"}]},
+    ])["result"]
+    assert wait["matched_branch"] == "success"
+    assert wait["matched_predicates"] == [{"path": "ui.dialog", "op": "eq", "value": "Saved"}]
+    assert wait["witnesses"][0]["evidence"]["source"] == "rpc:atspi"
 
 
 def test_exact_compositor_frame_preserves_component_extents(monkeypatch):

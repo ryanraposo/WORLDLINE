@@ -123,18 +123,21 @@ class WorldlineDaemon:
         def matched(group: list, group_mode: str) -> bool:
             states = [self._predicate(p, after) for p in group if isinstance(p, dict)]
             return bool(states) and (all(states) if group_mode == "all" else any(states))
-        branch = next((str(item.get("id", "")) for item in branches
+        chosen = next((item for item in branches
                        if isinstance(item, dict) and matched(
                            item.get("predicates", []), item.get("mode", "all"))), None)
-        ready = branch is not None or matched(predicates, mode)
+        branch = str(chosen.get("id", "")) if chosen is not None else None
+        ready = chosen is not None or matched(predicates, mode)
         conflicts = [path for path in args.get("conflict_paths", [])
                      if isinstance(path, str) and self.store.touched_after(path, after)]
         code = "ready" if ready else "conflict" if conflicts else "pending"
-        witnesses = [self.store.fact_receipt(p.get("path")) for p in predicates
+        matching = chosen.get("predicates", []) if chosen is not None else predicates
+        witnesses = [self.store.fact_receipt(p.get("path")) for p in matching
                      if isinstance(p, dict) and self._predicate(p, after)]
         return {"code": code, "state": code, "revision": self.store.revision,
                 "after_revision": after, "matched_branch": branch,
-                "conflict_paths": conflicts, "witnesses": [w for w in witnesses if w]}
+                "conflict_paths": conflicts, "witnesses": [w for w in witnesses if w],
+                "matched_predicates": matching if ready else []}
 
     def _observe_provider(self, provider_name: str, *, mode: str = "active",
                           expected_revision: int | None = None) -> tuple[int, int]:
@@ -291,12 +294,14 @@ class WorldlineDaemon:
             return ok(req, snapshot)
         if req.op == "event":
             if isinstance(req.args.get("event"), dict):
-                revision = apply_event(self.store, req.args["event"])
+                event = dict(req.args["event"])
+                event["source"] = "rpc:" + str(event.get("source") or "external")[:76]
+                revision = apply_event(self.store, event)
             else:
                 key = str(req.args["key"])
                 fact = Fact(
                     key=key, value=req.args.get("value"),
-                    evidence=Evidence(source=str(req.args.get("source", "rpc:event")),
+                    evidence=Evidence(source="rpc:" + str(req.args.get("source", "event"))[:76],
                                       confidence=float(req.args.get("confidence", 1.0)),
                                       expires_at=req.args.get("expires_at")),
                     tags=tuple(req.args.get("tags") or ()),
@@ -317,13 +322,15 @@ class WorldlineDaemon:
             before = args.get("before_revision")
             predicate = args.get("predicate")
             owner = args.get("owner")
-            if (type(before) is not int or not isinstance(owner, str) or not owner
-                    or not isinstance(predicate, dict)):
-                return error(req, "bad_request", "receipt requires owner, before_revision and predicate")
+            if (type(before) is not int or before < 0 or before > self.store.revision
+                    or not isinstance(owner, str) or not owner
+                    or not isinstance(predicate, dict)
+                    or args.get("domain_id") != self.domain_id):
+                return error(req, "bad_request", "receipt requires current domain, owner, valid before_revision and predicate")
             witness = self.store.fact_receipt(predicate.get("path"))
             observed = (self._predicate({**predicate, "fresh_after": before}, before)
                         and witness is not None
-                        and witness["evidence"]["source"] != owner)
+                        and witness["evidence"]["source"] not in (owner, f"rpc:{owner}"))
             action_ok = args.get("action_ok") is True
             return ok(req, {
                 "schema": "worldline.causal-receipt", "protocol": PROTOCOL_VERSION,
