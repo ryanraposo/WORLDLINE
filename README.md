@@ -66,10 +66,19 @@ validity and revision. WORLDLINE reports source availability in the full
 snapshot. A source outage appears as an unavailable observation.
 
 Window titles, states and component extents come from AT-SPI. Mutter
-DisplayConfig supplies monitor layout. Window geometry identifies AT-SPI
-component extents as its frame source and marks compositor stacking and pixel
-occlusion as unknown. A window `stable_id` derives from its process and AT-SPI
-accessible path for that process lifetime.
+DisplayConfig supplies monitor layout. When the Cua GNOME helper is hosted by
+the attested GNOME Shell, its stable window IDs and exact compositor frames
+join unique process/title/overlap matches; AT-SPI component extents remain
+separate. Unmatched compositor windows remain geometry-only. Every frame
+names its source. Pixel occlusion remains uncertain.
+
+The socket is protocol 1 and rejects other versions before mutation. GWCU and
+Horner share its revision domain: `fence` seals a pre-action boundary, `event`
+and `capture` add observations, `wait` tests fresh predicates and conflicts,
+and `receipt` correlates actuator acknowledgement with a newer observation
+from another source. The receipt's `claim` identifies what was verified;
+foreground admission alone does not establish an application's intended
+effect. WORLDLINE observes but never injects input.
 
 The source catalogue identifies each provider, its acquisition method and
 read cost. The daemon serves revisioned facts over a user-private Unix socket. Agents can

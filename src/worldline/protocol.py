@@ -6,7 +6,7 @@ from typing import Any
 
 PROTOCOL_VERSION = 1
 LEGACY_OPS = frozenset({"status", "event", "capture", "arm", "wait", "close"})
-CORE_OPS = frozenset({"hello", "status", "query", "features", "observe", "fence", "sources"}) | LEGACY_OPS
+CORE_OPS = frozenset({"hello", "status", "query", "features", "observe", "fence", "sources", "receipt"}) | LEGACY_OPS
 
 
 @dataclass(frozen=True, slots=True)
