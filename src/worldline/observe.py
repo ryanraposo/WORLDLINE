@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from . import window_geometry
+from .cua_gnome import read_windows as _compositor_windows
 
 SCHEMA = 1
 TOP_PROCESSES = 12
@@ -1098,7 +1099,7 @@ def _active_summary(items: list[dict[str, Any]]) -> dict[str, Any] | None:
 
 
 def _windows() -> dict[str, Any]:
-    """Observe semantic windows and screen extents without a Shell helper.
+    """Observe semantic windows, and exact frames when Cua's Shell helper is trusted.
 
     AT-SPI supplies process identity, title, states and component extents.
     Mutter DisplayConfig supplies the monitor layout.  Neither source proves
@@ -1111,6 +1112,8 @@ def _windows() -> dict[str, Any]:
     monitors = display.get("monitors") or []
     screen = display.get("screen")
     observed: list[dict[str, Any]] = list(atspi.get("items") or [])
+    compositor = _compositor_windows()
+    exact = compositor.get("items", []) if compositor.get("available") else []
     if not monitors and not screen:
         screen = window_geometry.union(
             item["frame"] for item in observed if item.get("frame")
@@ -1149,7 +1152,33 @@ def _windows() -> dict[str, Any]:
             continue
         canonical.append(item)
 
+    matched_compositor: set[tuple[int, int]] = set()
     for item in canonical:
+        # Only a unique same-process, same-title overlapping match transfers
+        # compositor identity to an AT-SPI accessible. Never infer a frame
+        # from an accessibility object path or a title alone.
+        candidates = [candidate for candidate in exact
+                      if candidate["pid"] == item.get("pid")
+                      and candidate.get("title") == item.get("title")
+                      and window_geometry.overlap_fraction(
+                          item["frame"], {"x": candidate["x"], "y": candidate["y"],
+                                          "width": candidate["w"], "height": candidate["h"]}) > 0.5]
+        if len(candidates) == 1 and (candidates[0]["pid"], candidates[0]["id"]) not in matched_compositor:
+            candidate = candidates[0]
+            matched_compositor.add((candidate["pid"], candidate["id"]))
+            item["component_extents"] = item["frame"]
+            item["frame"] = window_geometry.rect(
+                candidate["x"], candidate["y"], candidate["w"], candidate["h"])
+            item["compositor_id"] = candidate["id"]
+            item["compositor_verified"] = True
+            item["sources"] = ["at-spi2", "cua-gnome-shell"]
+            item["geometry_source"] = "cua-gnome-shell"
+            item["status"] = "verified"
+            item["confidence"] = 1.0
+            item["stacking"] = candidate.get("stacking")
+            item["focused"] = candidate.get("focused") is True
+            item["visible"] = candidate.get("visible") is True
+            item["minimized"] = candidate.get("minimized") is True
         frame = item["frame"]
         item.update({
             "x": frame["x"],
@@ -1178,33 +1207,93 @@ def _windows() -> dict[str, Any]:
             minimized=item["minimized"],
             shaded=item["shaded"],
         )
-        item["geometry"]["frame_source"] = "at-spi2-component-extents"
+        item["geometry"]["frame_source"] = (
+            "cua-gnome-shell-frame" if item.get("compositor_verified")
+            else "at-spi2-component-extents")
 
-    # AT-SPI enumeration supplies no compositor stacking order.
+    # Keep compositor-only windows: an inaccessible application can still
+    # provide an exact input identity and frame without a semantic tree.
+    matched = {(item.get("pid"), item.get("compositor_id")) for item in canonical}
+    for candidate in exact:
+        if (candidate["pid"], candidate["id"]) in matched:
+            continue
+        frame = window_geometry.rect(candidate["x"], candidate["y"], candidate["w"], candidate["h"])
+        item = {
+            "id": candidate["id"], "stable_id": f"window:{candidate['pid']}:{candidate['id']}",
+            "pid": candidate["pid"], "compositor_id": candidate["id"],
+            "compositor_verified": True, "app": None, "title": candidate.get("title", ""),
+            "frame": frame, "focused": candidate.get("focused") is True,
+            "active": candidate.get("focused") is True,
+            "visible": candidate.get("visible") is True,
+            "minimized": candidate.get("minimized") is True,
+            "shaded": False, "maximized": False, "modal": False,
+            "status": "geometry_only", "confidence": 1.0,
+            "sources": ["cua-gnome-shell"], "geometry_source": "cua-gnome-shell",
+            "stacking": candidate.get("stacking"),
+        }
+        item["state"] = {key: item[key] for key in (
+            "active", "focused", "visible", "minimized", "shaded", "maximized", "modal")}
+        item["geometry"] = window_geometry.describe(
+            frame, monitors=monitors, screen=screen,
+            visible=item["visible"], minimized=item["minimized"])
+        item["geometry"]["frame_source"] = "cua-gnome-shell-frame"
+        canonical.append(item)
+
+    # The helper reports bottom-to-top stacking. Rectangle overlap gives an
+    # upper bound on exposure; it cannot establish pixel visibility through
+    # transparent surfaces.
+    for item in canonical:
+        stacking = item.get("stacking")
+        if not isinstance(stacking, int):
+            continue
+        occluders = [other["frame"] for other in canonical
+                     if isinstance(other.get("stacking"), int)
+                     and other["stacking"] > stacking
+                     and other.get("visible", True)
+                     and not other.get("minimized", False)]
+        item["geometry"] = window_geometry.describe(
+            item["frame"], monitors=monitors, screen=screen,
+            visible=item["visible"], minimized=item["minimized"],
+            shaded=item.get("shaded", False), occluders=occluders,
+            z_index=stacking)
+        item["geometry"]["frame_source"] = (
+            "cua-gnome-shell-frame" if item.get("compositor_verified")
+            else "at-spi2-component-extents")
+
+    # AT-SPI enumeration alone supplies no compositor stacking order.
     canonical.sort(key=lambda item: (
         not item["active"], item.get("app") or "", item.get("title") or ""
     ))
     available = bool(atspi.get("available"))
     result: dict[str, Any] = {
-        "source": "at-spi2",
-        "available": available,
+        "source": "cua-gnome-shell+at-spi2" if exact else "at-spi2",
+        "available": available or bool(compositor.get("available")),
         "count": len(canonical),
         "items": canonical,
         "by_id": {item["stable_id"]: item for item in canonical if item.get("stable_id")},
         "deduplicated": deduplicated,
         "active": _active_summary(canonical),
+        "focus": next(({
+            "stable_id": item.get("stable_id"),
+            "compositor_id": item.get("compositor_id"),
+            "pid": item.get("pid"),
+            "source": item.get("geometry_source"),
+            "verified": bool(item.get("compositor_verified")),
+        } for item in canonical if item.get("focused")), None),
         "screen": screen,
         "monitors": monitors,
-        "stacking_order": None,
+        "stacking_order": [item.get("stable_id") for item in sorted(
+            (item for item in canonical if isinstance(item.get("stacking"), int)),
+            key=lambda item: item["stacking"])] if exact else None,
         "semantic_source": "at-spi2",
-        "geometry_source": "at-spi2",
+        "geometry_source": "cua-gnome-shell" if exact else "at-spi2",
         "counts": {
             "canonical": len(canonical),
             "semantic": len(observed),
             "geometry": len(canonical),
-            "verified": 0,
-            "semantic_only": len(canonical),
-            "geometry_only": 0,
+            "verified": sum(item["status"] == "verified" for item in canonical),
+            "semantic_only": sum(item["status"] == "semantic_only" for item in canonical),
+            "geometry_only": sum(item["status"] == "geometry_only" for item in canonical),
             "deduplicated": len(deduplicated),
             "stale": sum(item["status"] == "stale" for item in deduplicated),
             "duplicate": sum(item["status"] == "duplicate" for item in deduplicated),
@@ -1217,10 +1306,11 @@ def _windows() -> dict[str, Any]:
                 "count": atspi.get("count", 0),
             },
             "geometry": {
-                "name": "at-spi2",
-                "available": available,
-                "reason": atspi.get("reason"),
+                "name": "cua-gnome-shell" if exact else "at-spi2",
+                "available": bool(compositor.get("available")) or available,
+                "reason": compositor.get("reason") if not exact else None,
                 "count": len(canonical),
+                "helper_api": compositor.get("helper_api"),
                 "limitations": [
                     "component extents may differ from compositor frames",
                     "stacking and pixel visibility are not observed",

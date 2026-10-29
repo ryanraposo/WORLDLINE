@@ -169,6 +169,23 @@ class WorldStore:
         with self._lock:
             return self._invalidated_at.get(key, 0) > revision
 
+    def fact_receipt(self, key: str) -> dict[str, Any] | None:
+        with self._lock:
+            fact = self._facts.get(key)
+            if fact is None or not fact.evidence.valid_at():
+                return None
+            return {"path": key, "value": fact.value,
+                    "observed_revision": self._observed_at.get(key),
+                    "changed_revision": self._changed_at.get(key),
+                    "evidence": fact.to_dict()["evidence"]}
+
+    def touched_after(self, prefix: str, revision: int) -> bool:
+        with self._lock:
+            return any((key == prefix or key.startswith(prefix + "."))
+                       and max(self._changed_at.get(key, 0),
+                               self._invalidated_at.get(key, 0)) > revision
+                       for key in set(self._changed_at) | set(self._invalidated_at))
+
     def wait_for(
         self,
         predicate: dict[str, Any],
@@ -210,6 +227,17 @@ class WorldStore:
                         ready = ready and self._invalidated_at.get(path, 0) > fresh_after
                 elif op == "ne":
                     ready = fact is not None and fact.value != want
+                    if predicate.get("fresh_after") is not None:
+                        ready = ready and self._observed_at.get(path, 0) > fresh_after
+                elif op == "in":
+                    ready = fact is not None and isinstance(want, list) and fact.value in want
+                    if predicate.get("fresh_after") is not None:
+                        ready = ready and self._observed_at.get(path, 0) > fresh_after
+                elif op == "contains":
+                    try:
+                        ready = fact is not None and want in fact.value
+                    except TypeError:
+                        ready = False
                     if predicate.get("fresh_after") is not None:
                         ready = ready and self._observed_at.get(path, 0) > fresh_after
                 else:

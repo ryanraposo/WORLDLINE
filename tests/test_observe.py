@@ -41,6 +41,10 @@ def install_atspi(monkeypatch, items, *, available=True, reason=None, display=DI
         "items": items, **({"reason": reason} if reason else {}),
     })
     monkeypatch.setattr(observe_module, "_display", lambda: display)
+    monkeypatch.setattr(observe_module, "_compositor_windows", lambda: {
+        "source": "cua-gnome-shell", "available": False,
+        "reason": "helper unavailable in fixture", "items": [],
+    })
 
 
 def test_atspi_windows_keep_identity_geometry_and_unknown_occlusion(monkeypatch):
