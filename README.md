@@ -93,6 +93,13 @@ from another source. The receipt's `claim` identifies what was verified;
 foreground admission alone does not establish an application's intended
 effect. WORLDLINE observes but never injects input.
 
+Check the live integration with `worldlinectl hello`: the response identifies
+the socket's `domain_id`, protocol and receipt schema. GWCU and Horner must
+use that same instance for a shared action; a nested Horner DevKit deliberately
+uses a separate socket and domain. Start the WORLDLINE service before GWCU's
+installer, then verify GWCU's doctor before bringing up Horner. If the daemon
+restarts, discard outstanding fences and take a new one before acting.
+
 The source catalogue identifies each provider, its acquisition method and
 read cost. The daemon serves revisioned facts over a user-private Unix socket. Agents can
 read a focused path, refresh its source, and compare later evidence with a
