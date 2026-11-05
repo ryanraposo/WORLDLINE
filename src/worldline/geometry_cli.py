@@ -100,19 +100,19 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
     lines = ["".join(row).rstrip() for row in canvas]
     if color:
         colors = {
-            "░": "\\x1b[38;2;96;119;139m",
-            "▒": "\\x1b[38;2;131;154;173m",
-            "▓": "\\x1b[38;2;175;199;219m",
-            "█": "\\x1b[38;2;224;240;249m",
-            "?": "\\x1b[38;2;210;166;109m",
-            "▣": "\\x1b[38;2;107;229;217m",
-            "╎": "\\x1b[38;2;106;132;151m",
+            "░": "\x1b[38;2;96;119;139m",
+            "▒": "\x1b[38;2;131;154;173m",
+            "▓": "\x1b[38;2;175;199;219m",
+            "█": "\x1b[38;2;224;240;249m",
+            "?": "\x1b[38;2;210;166;109m",
+            "▣": "\x1b[38;2;107;229;217m",
+            "╎": "\x1b[38;2;106;132;151m",
         }
         for index, line in enumerate(lines):
             if index == 0:
-                lines[index] = "\\x1b[1;38;2;107;229;217m" + line + "\\x1b[0m"
+                lines[index] = "\x1b[1;38;2;107;229;217m" + line + "\x1b[0m"
                 continue
-            lines[index] = "".join(colors[ch] + ch + "\\x1b[0m" if ch in colors else ch
+            lines[index] = "".join(colors[ch] + ch + "\x1b[0m" if ch in colors else ch
                                    for ch in line)
     return "\n".join(lines)
 
