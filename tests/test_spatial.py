@@ -45,3 +45,29 @@ def test_terminal_frame_draws_monitors_and_unknown_z():
     assert "M0 " in output and "M1 " in output
     assert "?" in output and ("▓" in output or "█" in output)
     assert "q quit" in output
+
+def test_live_map_quits_on_q_and_restores_terminal(monkeypatch):
+    import io
+    from worldline import geometry_cli
+
+    stdin = io.StringIO("q")
+    stdin.isatty = lambda: True
+    stdin.fileno = lambda: 5
+    stdout = io.StringIO()
+    stdout.isatty = lambda: True
+    restored = []
+    monkeypatch.setattr(geometry_cli.sys, "stdin", stdin)
+    monkeypatch.setattr(geometry_cli.sys, "stdout", stdout)
+    monkeypatch.setattr(geometry_cli.termios, "tcgetattr", lambda fd: ["original"])
+    monkeypatch.setattr(geometry_cli.termios, "tcsetattr",
+        lambda fd, mode, saved: restored.append((fd, saved)))
+    monkeypatch.setattr(geometry_cli.tty, "setcbreak", lambda fd: None)
+    monkeypatch.setattr(geometry_cli.select, "select",
+        lambda read, write, error, seconds: (read, [], []))
+    result = geometry_cli.geometry_command(["--live"],
+        connect=lambda path, op, args: {"ok": True, "result": project_spatial(sample())},
+        socket_path="/test/worldline.sock", dumps=lambda x: str(x))
+    assert result == 0
+    assert "\\x1b[?25l" in stdout.getvalue()
+    assert "\\x1b[?25h" in stdout.getvalue()
+    assert restored == [(5, ["original"])]
