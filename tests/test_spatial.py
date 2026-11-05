@@ -68,6 +68,6 @@ def test_live_map_quits_on_q_and_restores_terminal(monkeypatch):
         connect=lambda path, op, args: {"ok": True, "result": project_spatial(sample())},
         socket_path="/test/worldline.sock", dumps=lambda x: str(x))
     assert result == 0
-    assert "\\x1b[?25l" in stdout.getvalue()
-    assert "\\x1b[?25h" in stdout.getvalue()
+    assert "\x1b[?25l" in stdout.getvalue()
+    assert "\x1b[?25h" in stdout.getvalue()
     assert restored == [(5, ["original"])]
