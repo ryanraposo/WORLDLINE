@@ -40,13 +40,15 @@ def test_spatial_has_signed_monitor_coordinates_and_verified_stack():
 
 
 def test_terminal_frame_draws_monitors_and_unknown_z():
-    output = render_spatial(project_spatial(sample()), columns=100, rows=30)
+    output = render_spatial(project_spatial(sample()), columns=100, rows=30, live=True)
     assert "WORLDLINE  /  GEOMETRY" in output
     assert "M0 " in output and "M1 " in output
     assert "?" in output and ("▓" in output or "█" in output)
-    assert "q quit" in output
-    assert "02? Terminal |" in output
+    assert "q  quit live view" in output
+    assert "02 ? Terminal" in output
     assert "╳" in output
+    assert len(output.splitlines()) == 30
+    assert all(len(line) == 100 for line in output.splitlines())
 
 
 def test_overlapping_window_labels_are_separate_and_terminal_safe():
@@ -56,6 +58,19 @@ def test_overlapping_window_labels_are_separate_and_terminal_safe():
     assert "\x1b" not in output
     assert "Bad Name" in output
     assert "╳" in output
+
+
+def test_unicode_labels_keep_panel_columns_aligned():
+    import unicodedata
+
+    world = sample()
+    world["windows"]["items"][1]["app"] = "東京"
+    output = render_spatial(project_spatial(world), columns=100, rows=30)
+    for line in output.splitlines():
+        columns = sum(0 if unicodedata.combining(char) else
+                      2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+                      for char in line)
+        assert columns == 100
 
 def test_live_map_quits_on_q_and_restores_terminal(monkeypatch):
     import io

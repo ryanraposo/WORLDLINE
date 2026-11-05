@@ -15,8 +15,11 @@ fi
 .venv/bin/python -m pip install -e .
 
 if systemctl --user cat worldline.service >/dev/null 2>&1; then
+    # A daemon started on demand may still own the socket. Close it before
+    # starting the persistent service so the service takes over the new code.
+    .venv/bin/worldlinectl close >/dev/null 2>&1 || true
+    systemctl --user stop worldline.service >/dev/null 2>&1 || true
     ./scripts/install_user_service.sh
-    systemctl --user restart worldline.service
     systemctl --user is-active --quiet worldline.service
 else
     .venv/bin/worldlinectl close >/dev/null 2>&1 || true
