@@ -7,9 +7,7 @@ import select
 import shutil
 import sys
 import termios
-import time
 import tty
-from math import ceil
 from typing import Any, Callable
 
 from .spatial import project_spatial
@@ -19,14 +17,16 @@ SHADES = "░▒▓█"
 
 def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
                    color: bool = False) -> str:
-    """Pure visual projection, suitable for CLI output and snapshot tests."""
+    """Render geometry without implying an order the observations do not prove."""
     width = max(28, min(180, columns))
     height = max(12, min(60, rows))
     canvas = [[" " for _ in range(width)] for _ in range(height)]
-    monitors = frame.get("monitors") or []
+    monitors = [m for m in frame.get("monitors") or []
+                if isinstance(m, dict) and isinstance(m.get("frame"), dict)]
     rectangles = [m["frame"] for m in monitors if isinstance(m.get("frame"), dict)]
     if not rectangles:
-        return "WORLDLINE / GEOMETRY\n  Monitor geometry unavailable\n  Window details: worldline windows.items"
+        return ("WORLDLINE / GEOMETRY\n  Monitor geometry unavailable\n"
+                "  Query worldline windows.items for observed window details")
     x0 = min(r["x"] for r in rectangles)
     y0 = min(r["y"] for r in rectangles)
     x1 = max(r["x"] + r["width"] for r in rectangles)
@@ -34,7 +34,8 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
     span_x = max(1, x1 - x0)
     span_y = max(1, y1 - y0)
     usable_width = width - 4
-    usable_height = height - 7
+    chart_bottom = height - 4
+    usable_height = chart_bottom - 3
     # Character cells are roughly twice as tall as they are wide.
     scale = min(usable_width / span_x, usable_height * 2 / span_y)
     def to_screen(r):
@@ -42,61 +43,71 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
         y = 3 + round((r["y"] - y0) * scale / 2)
         w = max(3, round(r["width"] * scale))
         h = max(2, round(r["height"] * scale / 2))
-        return x, y, min(w, width - 2 - x), min(h, height - 5 - y)
-    def draw(r, fill, border=None):
+        return x, y, min(w, width - 2 - x), min(h, chart_bottom - y)
+    def draw(r, fill, border=None, *, transparent=False, merge=False):
         x, y, w, h = to_screen(r)
         if w < 2 or h < 2:
             return None
         for yy in range(max(0, y), min(height, y + h)):
             for xx in range(max(0, x), min(width, x + w)):
                 is_edge = yy in (y, y + h - 1) or xx in (x, x + w - 1)
-                canvas[yy][xx] = border if is_edge and border else fill
+                if transparent and not is_edge:
+                    continue
+                char = fill
+                if is_edge and border:
+                    if isinstance(border, tuple):
+                        top, right = yy == y, xx == x + w - 1
+                        bottom, left = yy == y + h - 1, xx == x
+                        if top and left:
+                            char = border[2]
+                        elif top and right:
+                            char = border[3]
+                        elif bottom and left:
+                            char = border[4]
+                        elif bottom and right:
+                            char = border[5]
+                        elif top or bottom:
+                            char = border[0]
+                        else:
+                            char = border[1]
+                    else:
+                        char = border
+                if merge and canvas[yy][xx] != " ":
+                    canvas[yy][xx] = "╳"
+                elif not transparent or is_edge:
+                    canvas[yy][xx] = char
         return x, y, w, h
-    def title(window, box):
-        if not box:
-            return
-        x, y, w, h = box
-        if w < 12 or h < 4:
-            return
-        label = (window.get("app") or window.get("title") or window.get("ref") or "window")
-        tag = f"{'● ' if window.get('focused') else ''}{str(label)[:w - 4]}"
-        for delta, char in enumerate(tag):
-            xx = x + 2 + delta
-            if 0 <= y + 1 < height and 0 <= xx < width:
-                canvas[y + 1][xx] = char
+    def safe_text(value: Any, limit: int) -> str:
+        return "".join(ch if ch.isprintable() else " " for ch in str(value))[:limit]
     for monitor in monitors:
-        draw(monitor["frame"], "·", "╎")
+        draw(monitor["frame"], " ", ("┄", "┆", "┌", "┐", "└", "┘"))
     visible_windows = [w for w in frame.get("windows", []) if w.get("minimized") is not True]
     ranked = [w for w in visible_windows if w.get("z_verified")]
     minimum = min((w["z"] for w in ranked), default=0)
     maximum = max((w["z"] for w in ranked), default=0)
-    # Unknown-order windows are unfilled outlines; they cannot be layered
-    # as if their observation proved a stacking position.
-    for window in (w for w in visible_windows if not w.get("z_verified")):
-        title(window, draw(window["frame"], " ", "?"))
+    # Verified windows are composited in observed bottom-to-top order.
     for window in sorted(ranked, key=lambda w: w["z"]):
         shade_index = round(3 * (window["z"] - minimum) / max(1, maximum - minimum))
-        title(window, draw(window["frame"], SHADES[shade_index],
-             "▣" if window.get("focused") else SHADES[shade_index]))
+        draw(window["frame"], SHADES[shade_index], SHADES[shade_index])
+    # Unknown-order frames are transparent outlines. At intersections use a
+    # neutral crossing glyph, never an apparent front-to-back relationship.
+    unverified = [w for w in visible_windows if not w.get("z_verified")]
+    for window in unverified:
+        draw(window["frame"], " ", "?", transparent=True, merge=True)
     header = "WORLDLINE  /  GEOMETRY"
     details = f"rev {frame.get('revision', '—')}  ·  {len(monitors)} monitors  ·  {len(frame.get('windows', []))} windows"
     for col, ch in enumerate(header[:width]):
         canvas[0][col] = ch
     for col, ch in enumerate(details[:width]):
         canvas[1][col] = ch
-    legend = "z: ░ low  ▒  ▓  █ high    ?: unverified stacking    ▣: focused"
-    footer = "q quit (live)  ·  --json exact data"
+    legend = "z: ░ low  ▒  ▓  █ high    ?: unverified edge    ╳: overlapping edges"
+    footer = "q quit (live)  ·  --json source-labelled frame"
     for col, ch in enumerate(legend[:width]):
         canvas[-2][col] = ch
     for col, ch in enumerate(footer[:width]):
         canvas[-1][col] = ch
-    # Give the layout stable, legible monitor labels.
-    for index, monitor in enumerate(monitors):
-        x, y, w, h = to_screen(monitor["frame"])
-        tag = f"M{index} {monitor['frame']['width']}×{monitor['frame']['height']}"
-        for delta, ch in enumerate(tag[:max(0, w - 1)]):
-            if 0 <= y < height and 0 <= x + delta < width:
-                canvas[y][x + delta] = ch
+    # Window names stay in a separate legend so overlapping frames cannot
+    # overwrite one another or suggest an unobserved stacking order.
     lines = ["".join(row).rstrip() for row in canvas]
     if color:
         colors = {
@@ -105,8 +116,13 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
             "▓": "\x1b[38;2;175;199;219m",
             "█": "\x1b[38;2;224;240;249m",
             "?": "\x1b[38;2;210;166;109m",
-            "▣": "\x1b[38;2;107;229;217m",
-            "╎": "\x1b[38;2;106;132;151m",
+            "┄": "\x1b[38;2;106;132;151m",
+            "┆": "\x1b[38;2;106;132;151m",
+            "┌": "\x1b[38;2;106;132;151m",
+            "┐": "\x1b[38;2;106;132;151m",
+            "└": "\x1b[38;2;106;132;151m",
+            "┘": "\x1b[38;2;106;132;151m",
+            "╳": "\x1b[38;2;226;183;116m",
         }
         for index, line in enumerate(lines):
             if index == 0:
@@ -114,7 +130,31 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
                 continue
             lines[index] = "".join(colors[ch] + ch + "\x1b[0m" if ch in colors else ch
                                    for ch in line)
-    return "\n".join(lines)
+    window_lines = ["Monitors (logical px):"]
+    for index, monitor in enumerate(monitors):
+        rect = monitor["frame"]
+        label = safe_text(monitor.get("id") or f"monitor:{index}", 28)
+        primary = " · primary" if monitor.get("primary") else ""
+        window_lines.append(
+            f"  M{index} {label}{primary} | ({rect['x']}, {rect['y']}) "
+            f"{rect['width']}×{rect['height']}"
+        )
+    window_lines.append("Windows (logical px; ? means stacking is unverified):")
+    for index, window in enumerate(visible_windows):
+        frame_rect = window.get("frame") or {}
+        label = safe_text(window.get("app") or window.get("title") or window.get("ref") or "window", 36)
+        title = safe_text(window.get("title") or "", 42)
+        x, y = frame_rect.get("x", "?"), frame_rect.get("y", "?")
+        w, h = frame_rect.get("width", "?"), frame_rect.get("height", "?")
+        stacking = f"z={window.get('z')}" if window.get("z_verified") else "z=?"
+        source = safe_text(window.get("geometry_source") or "unknown", 28)
+        title_part = f' — "{title}"' if title and title != label else ""
+        marker = " " if window.get("z_verified") else "?"
+        window_lines.append(
+            f"  {index + 1:02d}{marker} {label}{title_part} | "
+            f"({x}, {y}) {w}×{h} | {stacking} | {source}"
+        )
+    return "\n".join([*lines, *window_lines])
 
 
 def geometry_command(argv: list[str], *, connect: Callable, socket_path: str, dumps: Callable) -> int:

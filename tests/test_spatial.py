@@ -45,6 +45,17 @@ def test_terminal_frame_draws_monitors_and_unknown_z():
     assert "M0 " in output and "M1 " in output
     assert "?" in output and ("▓" in output or "█" in output)
     assert "q quit" in output
+    assert "02? Terminal |" in output
+    assert "╳" in output
+
+
+def test_overlapping_window_labels_are_separate_and_terminal_safe():
+    world = sample()
+    world["windows"]["items"][1]["app"] = "\x1b[31mBad\nName"
+    output = render_spatial(project_spatial(world), columns=100, rows=30)
+    assert "\x1b" not in output
+    assert "Bad Name" in output
+    assert "╳" in output
 
 def test_live_map_quits_on_q_and_restores_terminal(monkeypatch):
     import io
