@@ -42,7 +42,7 @@ def install_atspi(monkeypatch, items, *, available=True, reason=None, display=DI
     })
     monkeypatch.setattr(observe_module, "_display", lambda: display)
     monkeypatch.setattr(observe_module, "_compositor_windows", lambda: {
-        "source": "cua-gnome-shell", "available": False,
+        "source": "worldline-gnome-shell", "available": False,
         "reason": "helper unavailable in fixture", "items": [],
     })
 
@@ -160,3 +160,24 @@ def test_processes_top_and_full():
     full = observe(("processes",), full=True)["processes"]
     assert full["count"] == len(full["all"])
     assert full["count"] >= len(full["top"])
+
+
+def test_exact_geometry_snapshot_skips_accessibility_and_uses_shell_frames(monkeypatch):
+    monkeypatch.setattr(observe_module, "_atspi_windows",
+                        lambda: (_ for _ in ()).throw(AssertionError("AT-SPI must not run")))
+    monkeypatch.setattr(observe_module, "_compositor_windows", lambda: {
+        "available": True, "source": "worldline-gnome-shell", "helper_api": 1,
+        "items": [
+            {"pid": 42, "id": 7, "title": "Kitty", "x": 120, "y": 80,
+             "w": 800, "h": 600, "focused": True, "visible": True,
+             "minimized": False, "stacking": 2},
+        ],
+    })
+    windows = observe_module.windows_snapshot(exact_only=True, display=DISPLAY)
+    assert windows["count"] == 1
+    assert windows["items"][0]["title"] == "Kitty"
+    assert windows["items"][0]["geometry"]["frame"] == {
+        "x": 120, "y": 80, "width": 800, "height": 600}
+    assert windows["items"][0]["geometry"]["frame_source"] == (
+        "worldline-gnome-shell-frame")
+    assert windows["counts"]["semantic"] == 0

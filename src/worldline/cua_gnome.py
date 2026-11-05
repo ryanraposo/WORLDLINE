@@ -1,6 +1,6 @@
-"""Read exact GNOME window frames from the attested Cua Shell helper.
+"""Read exact GNOME window frames from the attested WORLDLINE Shell API.
 
-This source observes only. Input and activation remain with Cua's actuator.
+This source observes only. It never activates windows or sends input.
 The bus name is pinned to its unique owner for the complete read.
 """
 from __future__ import annotations
@@ -13,9 +13,9 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-DEST = "org.cua.WinRects"
-PATH = "/org/cua/WinRects"
-MIN_API = 8
+DEST = "org.worldline.WindowFrames"
+PATH = "/org/worldline/WindowFrames"
+MIN_API = 1
 
 
 def _call(dest: str, path: str, method: str, *args: str) -> str:
@@ -75,8 +75,8 @@ def read_windows() -> dict[str, Any]:
                 continue
             seen.add(ident)
             frames.append(item)
-        return {"available": True, "source": "cua-gnome-shell",
+        return {"available": True, "source": "worldline-gnome-shell",
                 "helper_api": version, "owner_pid": pid, "items": frames}
     except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
-        return {"available": False, "source": "cua-gnome-shell",
+        return {"available": False, "source": "worldline-gnome-shell",
                 "reason": f"{type(exc).__name__}: {exc}", "items": []}

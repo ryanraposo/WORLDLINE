@@ -1098,8 +1098,9 @@ def _active_summary(items: list[dict[str, Any]]) -> dict[str, Any] | None:
     }
 
 
-def _windows() -> dict[str, Any]:
-    """Observe semantic windows, and exact frames when Cua's Shell helper is trusted.
+def _windows(*, exact_only: bool = False,
+             display_override: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Observe semantic windows and exact frames from the trusted Shell API.
 
     AT-SPI supplies process identity, title, states and component extents.
     Mutter DisplayConfig supplies the monitor layout.  Neither source proves
@@ -1107,12 +1108,18 @@ def _windows() -> dict[str, Any]:
     remain unknown in the geometry description.
     """
 
-    atspi = _atspi_windows()
-    display = _display()
+    # The live geometry view is a compositor fact. Do not make it wait for
+    # AT-SPI enumeration or blend in child accessibles when the caller asks
+    # for exact frames only.
+    compositor = _compositor_windows() if exact_only else None
+    atspi = ({"available": False, "reason": "not requested for exact geometry",
+              "count": 0, "items": []} if exact_only else _atspi_windows())
+    display = display_override if display_override is not None else _display()
     monitors = display.get("monitors") or []
     screen = display.get("screen")
     observed: list[dict[str, Any]] = list(atspi.get("items") or [])
-    compositor = _compositor_windows()
+    if compositor is None:
+        compositor = _compositor_windows()
     exact = compositor.get("items", []) if compositor.get("available") else []
     if not monitors and not screen:
         screen = window_geometry.union(
@@ -1154,31 +1161,39 @@ def _windows() -> dict[str, Any]:
 
     matched_compositor: set[tuple[int, int]] = set()
     for item in canonical:
-        # Only a unique same-process, same-title overlapping match transfers
-        # compositor identity to an AT-SPI accessible. Never infer a frame
-        # from an accessibility object path or a title alone.
-        candidates = [candidate for candidate in exact
-                      if candidate["pid"] == item.get("pid")
-                      and candidate.get("title") == item.get("title")
-                      and window_geometry.overlap_fraction(
-                          item["frame"], {"x": candidate["x"], "y": candidate["y"],
-                                          "width": candidate["w"], "height": candidate["h"]}) > 0.5]
-        if len(candidates) == 1 and (candidates[0]["pid"], candidates[0]["id"]) not in matched_compositor:
-            candidate = candidates[0]
+        # Match the closest same-process, same-title frame. This handles
+        # multiple same-title Shell windows while preserving one-to-one IDs.
+        # Never infer identity from an accessibility path or title alone.
+        candidates = []
+        for candidate in exact:
+            key = (candidate["pid"], candidate["id"])
+            overlap = window_geometry.overlap_fraction(
+                item["frame"], {"x": candidate["x"], "y": candidate["y"],
+                                "width": candidate["w"], "height": candidate["h"]})
+            if (key not in matched_compositor
+                    and candidate["pid"] == item.get("pid")
+                    and candidate.get("title") == item.get("title")
+                    and overlap > 0.5):
+                candidates.append((overlap, candidate))
+        candidates.sort(key=lambda pair: pair[0], reverse=True)
+        if (candidates and (len(candidates) == 1
+                            or candidates[0][0] > candidates[1][0])):
+            candidate = candidates[0][1]
             matched_compositor.add((candidate["pid"], candidate["id"]))
             item["component_extents"] = item["frame"]
             item["frame"] = window_geometry.rect(
                 candidate["x"], candidate["y"], candidate["w"], candidate["h"])
             item["compositor_id"] = candidate["id"]
             item["compositor_verified"] = True
-            item["sources"] = ["at-spi2", "cua-gnome-shell"]
-            item["geometry_source"] = "cua-gnome-shell"
+            item["sources"] = ["at-spi2", "worldline-gnome-shell"]
+            item["geometry_source"] = "worldline-gnome-shell"
             item["status"] = "verified"
             item["confidence"] = 1.0
             item["stacking"] = candidate.get("stacking")
             item["focused"] = candidate.get("focused") is True
             item["visible"] = candidate.get("visible") is True
             item["minimized"] = candidate.get("minimized") is True
+
         frame = item["frame"]
         item.update({
             "x": frame["x"],
@@ -1208,8 +1223,15 @@ def _windows() -> dict[str, Any]:
             shaded=item["shaded"],
         )
         item["geometry"]["frame_source"] = (
-            "cua-gnome-shell-frame" if item.get("compositor_verified")
+            "worldline-gnome-shell-frame" if item.get("compositor_verified")
             else "at-spi2-component-extents")
+
+    # Once the trusted Shell API is available, it is authoritative for the
+    # top-level window set. AT-SPI-only entries can be child accessibles or
+    # off-screen helper surfaces, so keep them only as semantic enrichment
+    # for a compositor frame that was matched above.
+    if compositor.get("available"):
+        canonical = [item for item in canonical if item.get("compositor_verified")]
 
     # Keep compositor-only windows: an inaccessible application can still
     # provide an exact input identity and frame without a semantic tree.
@@ -1228,7 +1250,7 @@ def _windows() -> dict[str, Any]:
             "minimized": candidate.get("minimized") is True,
             "shaded": False, "maximized": False, "modal": False,
             "status": "geometry_only", "confidence": 1.0,
-            "sources": ["cua-gnome-shell"], "geometry_source": "cua-gnome-shell",
+            "sources": ["worldline-gnome-shell"], "geometry_source": "worldline-gnome-shell",
             "stacking": candidate.get("stacking"),
         }
         item["state"] = {key: item[key] for key in (
@@ -1236,7 +1258,7 @@ def _windows() -> dict[str, Any]:
         item["geometry"] = window_geometry.describe(
             frame, monitors=monitors, screen=screen,
             visible=item["visible"], minimized=item["minimized"])
-        item["geometry"]["frame_source"] = "cua-gnome-shell-frame"
+        item["geometry"]["frame_source"] = "worldline-gnome-shell-frame"
         canonical.append(item)
 
     # The helper reports bottom-to-top stacking. Rectangle overlap gives an
@@ -1257,7 +1279,7 @@ def _windows() -> dict[str, Any]:
             shaded=item.get("shaded", False), occluders=occluders,
             z_index=stacking)
         item["geometry"]["frame_source"] = (
-            "cua-gnome-shell-frame" if item.get("compositor_verified")
+            "worldline-gnome-shell-frame" if item.get("compositor_verified")
             else "at-spi2-component-extents")
 
     # AT-SPI enumeration alone supplies no compositor stacking order.
@@ -1266,7 +1288,7 @@ def _windows() -> dict[str, Any]:
     ))
     available = bool(atspi.get("available"))
     result: dict[str, Any] = {
-        "source": "cua-gnome-shell+at-spi2" if exact else "at-spi2",
+        "source": "worldline-gnome-shell+at-spi2" if exact else "at-spi2",
         "available": available or bool(compositor.get("available")),
         "count": len(canonical),
         "items": canonical,
@@ -1286,7 +1308,7 @@ def _windows() -> dict[str, Any]:
             (item for item in canonical if isinstance(item.get("stacking"), int)),
             key=lambda item: item["stacking"])] if exact else None,
         "semantic_source": "at-spi2",
-        "geometry_source": "cua-gnome-shell" if exact else "at-spi2",
+        "geometry_source": "worldline-gnome-shell" if exact else "at-spi2",
         "counts": {
             "canonical": len(canonical),
             "semantic": len(observed),
@@ -1306,7 +1328,7 @@ def _windows() -> dict[str, Any]:
                 "count": atspi.get("count", 0),
             },
             "geometry": {
-                "name": "cua-gnome-shell" if exact else "at-spi2",
+                "name": "worldline-gnome-shell" if exact else "at-spi2",
                 "available": bool(compositor.get("available")) or available,
                 "reason": compositor.get("reason") if not exact else None,
                 "count": len(canonical),
@@ -1321,6 +1343,12 @@ def _windows() -> dict[str, Any]:
     if not available:
         result["reason"] = atspi.get("reason") or "accessibility bus is not reachable"
     return result
+
+
+def windows_snapshot(*, exact_only: bool = False,
+                     display: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return a windows section, optionally using compositor frames only."""
+    return _windows(exact_only=exact_only, display_override=display)
 
 
 def _boot_epoch() -> float:

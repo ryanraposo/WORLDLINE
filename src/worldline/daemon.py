@@ -21,6 +21,7 @@ from .query import QueryError
 from .store import RevisionConflict, WorldStore
 from .providers.gnome import GNOMEProvider
 from .providers.host import HostRuntimeProvider
+from .observe import windows_snapshot
 from .sources import provider_description
 from .desktop_events import apply_event, capture_visual, compositor_focus_fact, direct_facts, start_atspi_sensor
 from .spatial import project_spatial
@@ -283,7 +284,19 @@ class WorldlineDaemon:
                 except KeyError as exc:
                     return error(req, "bad_request", str(exc))
             if req.args.get("view") == "geometry":
-                self.current.ensure(["desktop", "windows"], fresh=req.args.get("fresh") is True)
+                self.current.ensure(["desktop"])
+                world = self.current.world()
+                desktop = world.get("desktop") or {}
+                display = {"screen": desktop.get("screen"),
+                           "monitors": desktop.get("monitors", [])}
+                windows = windows_snapshot(exact_only=True, display=display)
+                now = time()
+                self.store.apply([Fact(
+                    key="windows", value=windows,
+                    evidence=Evidence(source=windows.get("geometry_source", "unknown"),
+                                      observed_at=now, expires_at=now + 2.0),
+                    tags=("observation-section",),
+                )])
                 return ok(req, project_spatial(self.current.world()))
             if req.args.get("view") == "world":
                 self.current.ensure(fresh=req.args.get("fresh") is True,

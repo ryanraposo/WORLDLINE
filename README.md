@@ -4,7 +4,7 @@
 
 # WORLDLINE
 
-**A live, revisioned view of what the machine knows now.**
+**Operating facts.**
 
 WORLDLINE observes the host and desktop, records when each fact was observed,
 and makes the current state available to people and tools as JSON. Reads can be
@@ -33,7 +33,11 @@ running. WORLDLINE uses the system Python when needed to access the desktop's
 AT-SPI bindings. Run `pytest` to check the installation.
 
 For a daemon that stays available throughout the graphical session, install the
-user service:
+user service. The installer asks before enabling WORLDLINE's GNOME Shell
+extension, which exposes a read-only session D-Bus API for compositor window
+frames and state. Session applications running as your user can call that API;
+WORLDLINE verifies that the API is hosted by the trusted GNOME Shell. The
+extension does not activate windows or send input.
 
 ```bash
 ./scripts/install_user_service.sh
@@ -68,19 +72,22 @@ worldline geometry                 # terminal map and source-labelled details
 worldline geometry --json          # spatial-frame JSON
 worldline geometry --live          # refresh the map; press q to quit
 worldline geometry --live --interval 1.0  # live refresh interval, in seconds
+worldline geometry --live --title "WORLDLINE"  # exact title filter; repeatable
 ```
 
 The terminal map places monitors and window frames in logical desktop
-coordinates. Verified windows are shaded by observed compositor stacking
-order. Unverified frames are transparent outlines; `?` marks their edges and
-`╳` marks intersecting edges. Intersections do not imply which window is in
-front. The details below the map list each monitor and window's coordinates,
-dimensions, source, and whether its stacking order is verified. Window names
-are kept outside the drawing so overlapping frames cannot obscure or corrupt
-their labels.
+coordinates. Window frames are outlines clipped to each display. Verified
+outlines brighten with observed compositor stacking order; the active window
+gets a gold outline. Unverified frames use `?` edges and `╳` marks
+intersections. Intersections do not imply which window is in front. The details
+below the map list each monitor and window's coordinates, dimensions, source,
+and whether its stacking order is verified. Window names are kept outside the
+drawing so overlapping frames cannot obscure or corrupt their labels.
 
-`--live` requires an interactive terminal. It refreshes observations until you
-press `q` and restores the terminal when it exits. `--json` returns the
+`--live` requires an interactive terminal. It reads trusted compositor frames
+directly and redraws in the terminal's alternate screen, keeping refreshes out
+of scrollback. Press `q` to exit; the previous terminal screen is restored.
+`--json` returns the
 `worldline.spatial-frame/1` projection, including the source and verification
 status for each frame. It does not upgrade uncertain observations into exact
 ones. Use the ordinary `windows` facts or the JSON Lines query API when you need
@@ -90,12 +97,13 @@ full evidence receipts.
 
 Monitor layout comes from Mutter DisplayConfig. AT-SPI provides application
 semantics, state, and component extents. Those extents are not proof of a
-window's compositor frame or stacking position. When the Cua GNOME helper is
-hosted by the trusted GNOME Shell, its compositor frames and stacking can be
-joined to a unique same-process, same-title, overlapping AT-SPI match.
-Unmatched compositor windows remain geometry-only. The helper's owner and
-host executable are checked before its data is accepted as compositor
-evidence.
+window's compositor frame or stacking position. When WORLDLINE's GNOME Shell
+extension is hosted by the trusted GNOME Shell, its compositor frames and
+stacking can be joined to a unique same-process, same-title, overlapping
+AT-SPI match. Unmatched compositor windows remain geometry-only. The geometry
+view uses trusted Shell frames directly, without adding accessibility child
+rectangles or estimated extents. The API owner and host executable are checked
+before its data is accepted as compositor evidence.
 
 Even a verified frame and stacking order describe rectangles, not rendered
 pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility

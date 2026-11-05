@@ -62,7 +62,7 @@ def compositor_focus_fact() -> Fact | None:
     window = focused[0]
     return Fact("windows.focus.identity",
                 {"pid": window["pid"], "id": window["id"]},
-                Evidence(source="cua-gnome-shell", expires_at=time() + 1,
+                Evidence(source="worldline-gnome-shell", expires_at=time() + 1,
                          detail={"frame_source": "exact-compositor-frame",
                                  "frame": {"x": window["x"], "y": window["y"],
                                            "width": window["w"], "height": window["h"]}}))

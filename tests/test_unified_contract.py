@@ -100,15 +100,50 @@ def test_exact_compositor_frame_preserves_component_extents(monkeypatch):
         "screen": {"x": 0, "y": 0, "width": 1000, "height": 800},
         "monitors": []})
     monkeypatch.setattr(observe, "_compositor_windows", lambda: {
-        "available": True, "source": "cua-gnome-shell", "helper_api": 8,
+        "available": True, "source": "worldline-gnome-shell", "helper_api": 1,
         "items": [{"pid": 42, "id": 7, "title": "Editor",
                    "x": 8, "y": 19, "w": 406, "h": 306,
                    "focused": True, "visible": True, "minimized": False}]})
     window = observe._windows()["items"][0]
     assert window["geometry"]["frame"] == {"x": 8, "y": 19, "width": 406, "height": 306}
     assert window["component_extents"] == {"x": 11, "y": 22, "width": 400, "height": 300}
-    assert window["geometry"]["frame_source"] == "cua-gnome-shell-frame"
+    assert window["geometry"]["frame_source"] == "worldline-gnome-shell-frame"
     assert window["compositor_id"] == 7 and window["compositor_verified"]
+
+
+def test_shell_frames_disambiguate_same_title_and_drop_duplicate_accessibles(monkeypatch):
+    monkeypatch.setattr(observe, "_atspi_windows", lambda: {
+        "available": True, "count": 4, "items": [
+            {"pid": 42, "stable_id": "window:42:first", "title": "ChatGPT",
+             "frame": {"x": 164, "y": 72, "width": 1717, "height": 937}},
+            {"pid": 42, "stable_id": "window:42:child", "title": "",
+             "frame": {"x": 0, "y": 0, "width": 960, "height": 720}},
+            {"pid": 42, "stable_id": "window:42:second", "title": "ChatGPT",
+             "frame": {"x": 595, "y": -148, "width": 1138, "height": 2065}},
+            {"pid": 99, "stable_id": "window:99:phantom", "title": "Google Chrome",
+             "frame": {"x": 10, "y": 10, "width": 780, "height": 580}},
+        ]})
+    monkeypatch.setattr(observe, "_display", lambda: {
+        "screen": {"x": 0, "y": 0, "width": 1920, "height": 1080},
+        "monitors": []})
+    monkeypatch.setattr(observe, "_compositor_windows", lambda: {
+        "available": True, "source": "worldline-gnome-shell", "helper_api": 1,
+        "items": [
+            {"pid": 42, "id": 7, "title": "ChatGPT", "x": 164, "y": 72,
+             "w": 1717, "h": 937, "focused": True, "visible": True,
+             "minimized": False, "stacking": 0},
+            {"pid": 42, "id": 8, "title": "ChatGPT", "x": 595, "y": -148,
+             "w": 1138, "h": 2065, "focused": False, "visible": True,
+             "minimized": False, "stacking": 1},
+        ]})
+
+    world = observe._windows()
+    assert world["counts"]["verified"] == 2
+    assert world["counts"]["semantic_only"] == 0
+    assert {item["compositor_id"] for item in world["items"]} == {7, 8}
+    assert all(item["title"] != "Google Chrome" for item in world["items"])
+    assert {item["geometry"]["frame_source"] for item in world["items"]} == {
+        "worldline-gnome-shell-frame"}
 
 
 def test_compositor_stacking_bounds_exposure_and_reports_verified_focus(monkeypatch):
@@ -121,7 +156,7 @@ def test_compositor_stacking_bounds_exposure_and_reports_verified_focus(monkeypa
         "screen": {"x": 0, "y": 0, "width": 500, "height": 500},
         "monitors": []})
     monkeypatch.setattr(observe, "_compositor_windows", lambda: {
-        "available": True, "source": "cua-gnome-shell", "helper_api": 8,
+        "available": True, "source": "worldline-gnome-shell", "helper_api": 1,
         "items": [
             {"pid": 42, "id": 7, "title": "Editor", "x": 10, "y": 10,
              "w": 100, "h": 100, "focused": False, "visible": True,

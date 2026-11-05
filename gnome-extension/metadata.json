@@ -1,0 +1,7 @@
+{
+  "uuid": "worldline-window-frames@worldline",
+  "name": "WORLDLINE Window Frames",
+  "description": "Read-only window frame reporting for WORLDLINE",
+  "shell-version": ["50"],
+  "version": 1
+}
