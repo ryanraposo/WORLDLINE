@@ -144,6 +144,11 @@ def _catalog(value: Any, prefix: str, *, limit: int = 200) -> list[str]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "geometry":
+        from .geometry_cli import geometry_command
+        return geometry_command(argv[1:], connect=_connect,
+            socket_path=os.environ.get("WORLDLINE_SOCKET") or default_socket(), dumps=dumps)
     args = _parser().parse_args(argv)
     if args.list_paths and not args.paths:
         print(dumps(list(sections()), pretty=args.pretty))

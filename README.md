@@ -71,6 +71,26 @@ address an observed window by its `stable_id`.
 For integrations, the JSON Lines socket exposes `fence` and predicate-based
 `wait` operations to compare an action with later evidence.
 
+## Spatial geometry
+
+`worldline geometry` draws the observed monitor layout and window rectangles in
+the terminal. Stacking brightness uses confirmed compositor z values only;
+unverified stacking is outlined with `?`, not assigned a fictional layer.
+
+```bash
+worldline geometry                 # human-readable monitor/window map
+worldline geometry --live          # refresh continuously; press q to quit
+worldline geometry --json          # machine-readable spatial operating frame
+```
+
+The `worldline.spatial-frame/1` response is also available through the
+read-only JSONL socket: `{"protocol":1,"op":"query","args":{"view":"geometry"}}`.
+It includes stable window references, logical desktop coordinates, verified
+stacking and focus observations, source freshness, and explicit unknown
+workspace/activation values. No consumer-specific markers are included.
+The live terminal view requires a TTY, restores the terminal on exit, and
+does not attempt compositor activation or input injection.
+
 ## Operating facts
 
 An operating fact couples a value with a source receipt, observation time,

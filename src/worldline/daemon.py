@@ -23,6 +23,7 @@ from .providers.gnome import GNOMEProvider
 from .providers.host import HostRuntimeProvider
 from .sources import provider_description
 from .desktop_events import apply_event, capture_visual, compositor_focus_fact, direct_facts, start_atspi_sensor
+from .spatial import project_spatial
 
 
 class WorldlineDaemon:
@@ -281,6 +282,9 @@ class WorldlineDaemon:
                     return error(req, "no_such_path", str(exc))
                 except KeyError as exc:
                     return error(req, "bad_request", str(exc))
+            if req.args.get("view") == "geometry":
+                self.current.ensure(["desktop", "windows"], fresh=req.args.get("fresh") is True)
+                return ok(req, project_spatial(self.current.world()))
             if req.args.get("view") == "world":
                 self.current.ensure(fresh=req.args.get("fresh") is True,
                                     full=req.args.get("full") is True)
