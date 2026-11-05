@@ -17,7 +17,8 @@ from .spatial import project_spatial
 SHADES = "░▒▓█"
 
 
-def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32) -> str:
+def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
+                   color: bool = False) -> str:
     """Pure visual projection, suitable for CLI output and snapshot tests."""
     width = max(28, min(180, columns))
     height = max(12, min(60, rows))
@@ -45,11 +46,24 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32) -> 
     def draw(r, fill, border=None):
         x, y, w, h = to_screen(r)
         if w < 2 or h < 2:
-            return
+            return None
         for yy in range(max(0, y), min(height, y + h)):
             for xx in range(max(0, x), min(width, x + w)):
                 is_edge = yy in (y, y + h - 1) or xx in (x, x + w - 1)
                 canvas[yy][xx] = border if is_edge and border else fill
+        return x, y, w, h
+    def title(window, box):
+        if not box:
+            return
+        x, y, w, h = box
+        if w < 12 or h < 4:
+            return
+        label = (window.get("app") or window.get("title") or window.get("ref") or "window")
+        tag = f"{'● ' if window.get('focused') else ''}{str(label)[:w - 4]}"
+        for delta, char in enumerate(tag):
+            xx = x + 2 + delta
+            if 0 <= y + 1 < height and 0 <= xx < width:
+                canvas[y + 1][xx] = char
     for monitor in monitors:
         draw(monitor["frame"], "·", "╎")
     visible_windows = [w for w in frame.get("windows", []) if w.get("minimized") is not True]
@@ -59,11 +73,11 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32) -> 
     # Unknown-order windows are unfilled outlines; they cannot be layered
     # as if their observation proved a stacking position.
     for window in (w for w in visible_windows if not w.get("z_verified")):
-        draw(window["frame"], " ", "?")
+        title(window, draw(window["frame"], " ", "?"))
     for window in sorted(ranked, key=lambda w: w["z"]):
         shade_index = round(3 * (window["z"] - minimum) / max(1, maximum - minimum))
-        draw(window["frame"], SHADES[shade_index],
-             "▣" if window.get("focused") else SHADES[shade_index])
+        title(window, draw(window["frame"], SHADES[shade_index],
+             "▣" if window.get("focused") else SHADES[shade_index]))
     header = "WORLDLINE  /  GEOMETRY"
     details = f"rev {frame.get('revision', '—')}  ·  {len(monitors)} monitors  ·  {len(frame.get('windows', []))} windows"
     for col, ch in enumerate(header[:width]):
@@ -83,7 +97,24 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32) -> 
         for delta, ch in enumerate(tag[:max(0, w - 1)]):
             if 0 <= y < height and 0 <= x + delta < width:
                 canvas[y][x + delta] = ch
-    return "\n".join("".join(row).rstrip() for row in canvas)
+    lines = ["".join(row).rstrip() for row in canvas]
+    if color:
+        colors = {
+            "░": "\\x1b[38;2;96;119;139m",
+            "▒": "\\x1b[38;2;131;154;173m",
+            "▓": "\\x1b[38;2;175;199;219m",
+            "█": "\\x1b[38;2;224;240;249m",
+            "?": "\\x1b[38;2;210;166;109m",
+            "▣": "\\x1b[38;2;107;229;217m",
+            "╎": "\\x1b[38;2;106;132;151m",
+        }
+        for index, line in enumerate(lines):
+            if index == 0:
+                lines[index] = "\\x1b[1;38;2;107;229;217m" + line + "\\x1b[0m"
+                continue
+            lines[index] = "".join(colors[ch] + ch + "\\x1b[0m" if ch in colors else ch
+                                   for ch in line)
+    return "\n".join(lines)
 
 
 def geometry_command(argv: list[str], *, connect: Callable, socket_path: str, dumps: Callable) -> int:
@@ -115,7 +146,8 @@ def geometry_command(argv: list[str], *, connect: Callable, socket_path: str, du
             print(dumps(frame))
         else:
             size = shutil.get_terminal_size((88, 32))
-            print(render_spatial(frame, size.columns, size.lines))
+            print(render_spatial(frame, size.columns, size.lines,
+                color=sys.stdout.isatty() and not os.environ.get('NO_COLOR')))
         return 0
 
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
@@ -131,7 +163,8 @@ def geometry_command(argv: list[str], *, connect: Callable, socket_path: str, du
             try:
                 frame = read()
                 size = shutil.get_terminal_size((88, 32))
-                display = render_spatial(frame, size.columns, size.lines)
+                display = render_spatial(frame, size.columns, size.lines,
+                    color=not os.environ.get('NO_COLOR'))
             except OSError as exc:
                 display = f"WORLDLINE / GEOMETRY\nObservation unavailable: {exc}\nPress q to quit."
             sys.stdout.write("\x1b[H\x1b[J" + display + "\n")

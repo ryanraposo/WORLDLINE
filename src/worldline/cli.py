@@ -62,6 +62,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="worldline",
         description="WORLDLINE: Operating Fact. Read the revisioned current as JSON.",
+        epilog="Spatial display: worldline geometry [--live | --json] (q quits live view)",
     )
     parser.add_argument("paths", nargs="*", metavar="PATH",
                         help="dot paths such as windows.active.geometry")
