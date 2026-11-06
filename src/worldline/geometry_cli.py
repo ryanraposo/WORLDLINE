@@ -13,9 +13,15 @@ from typing import Any, Callable
 
 from .spatial import project_spatial
 
-SHADES = "░▒▓█"
-ACTIVE_BORDER = ("═", "║", "╔", "╗", "╚", "╝")
-MONITOR_BORDER = frozenset("┄┆┌┐└┘")
+
+def _fit_canvas(bounds: dict[str, int], max_width: int,
+                max_height: int) -> tuple[int, int]:
+    """Fit desktop bounds to terminal cells (about twice as tall as wide)."""
+    scale = min(max_width / max(1, bounds["width"]),
+                max_height * 2 / max(1, bounds["height"]))
+    return (max(2, min(max_width, round(bounds["width"] * scale))),
+            max(2, min(max_height, round(bounds["height"] * scale / 2))))
+
 
 
 def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
@@ -102,128 +108,108 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
     detail_limit = min(len(windows), max(0, (height - 15) // 2))
     shown_windows = windows[:detail_limit]
     omitted = len(windows) > len(shown_windows)
-    rectangles = [m["frame"] for m in monitors]
-    x0 = min(r["x"] for r in rectangles)
-    y0 = min(r["y"] for r in rectangles)
-    x1 = max(r["x"] + r["width"] for r in rectangles)
-    y1 = max(r["y"] + r["height"] for r in rectangles)
-    span_x = max(1, x1 - x0)
-    span_y = max(1, y1 - y0)
-    def clip_to_desktop(r):
-        left, top = max(r["x"], x0), max(r["y"], y0)
-        right = min(r["x"] + r["width"], x1)
-        bottom = min(r["y"] + r["height"], y1)
-        if right <= left or bottom <= top:
-            return None
-        return {"x": left, "y": top, "width": right - left, "height": bottom - top}
-
-    mapped = [(window, clip_to_desktop(window["frame"])) for window in windows]
-    mapped = [(window, frame) for window, frame in mapped if frame is not None]
-    uncertain_count = sum(not window.get("geometry_verified") for window, _ in mapped)
+    workspaces = frame.get("workspace") if isinstance(frame.get("workspace"), dict) else None
+    workspace_count = workspaces.get("count") if workspaces else None
+    active_workspace = workspaces.get("active") if workspaces else None
+    workspace_known = (type(workspace_count) is int and workspace_count > 0
+                       and type(active_workspace) is int
+                       and 0 <= active_workspace < workspace_count)
+    uncertain_count = sum(not window.get("geometry_verified") for window in windows)
     map_notice = uncertain_count > 0
-    chart_height = max(1, height - 10 - len(shown_windows) - int(omitted)
-                       - int(map_notice))
-    canvas = [[" " for _ in range(content_width)] for _ in range(chart_height)]
-    usable_width = content_width - 2
-    chart_bottom = chart_height - 1
-    usable_height = max(1, chart_bottom - 1)
-    # Character cells are roughly twice as tall as they are wide.
-    scale = min(usable_width / span_x, usable_height * 2 / span_y)
+    bounds = monitors[0]["frame"]
+    for monitor in monitors[1:]:
+        rect = monitor["frame"]
+        left, min_y = min(bounds["x"], rect["x"]), min(bounds["y"], rect["y"])
+        right = max(bounds["x"] + bounds["width"], rect["x"] + rect["width"])
+        max_y = max(bounds["y"] + bounds["height"], rect["y"] + rect["height"])
+        bounds = {"x": left, "y": min_y, "width": right-left, "height": max_y-min_y}
 
-    def to_screen(r):
-        x = 1 + round((r["x"] - x0) * scale)
-        y = 1 + round((r["y"] - y0) * scale / 2)
-        w = max(3, round(r["width"] * scale))
-        h = max(2, round(r["height"] * scale / 2))
-        return x, y, min(w, content_width - 1 - x), min(h, chart_bottom - y)
-
-    def draw(r, fill, border=None, *, transparent=False, merge=False,
-             clip_to_monitors=None):
-        x, y, w, h = to_screen(r)
-        if w < 2 or h < 2:
-            return None
-        for yy in range(max(0, y), min(chart_height, y + h)):
-            for xx in range(max(0, x), min(content_width, x + w)):
-                if clip_to_monitors is not None and not any(
-                    mx <= xx < mx + mw and my <= yy < my + mh
-                    for mx, my, mw, mh in clip_to_monitors
-                ):
+    card_width = max(24, min(42, (content_width - 2) // 2))
+    card_columns = max(1, (content_width + 2) // (card_width + 2))
+    if workspace_known:
+        cards = [(index, index == active_workspace) for index in range(workspace_count)]
+    else:
+        cards = [(None, True)]
+    card_row_count = (len(cards) + card_columns - 1) // card_columns
+    map_budget = max(card_row_count * 5,
+                     height - 10 - len(shown_windows) - int(omitted)
+                     - int(map_notice))
+    max_card_height = max(2, map_budget // card_row_count - 3)
+    canvas_width, canvas_height = _fit_canvas(bounds, card_width - 6,
+                                               max_card_height)
+    card_rows: list[str] = []
+    for start in range(0, len(cards), card_columns):
+        row_cards = cards[start:start + card_columns]
+        rendered_cards: list[list[str]] = []
+        for workspace_index, active in row_cards:
+            label = (f"{'> ' if active else '  '}DESKTOP {workspace_index + 1}"
+                     if workspace_index is not None else "  WORKSPACE ?")
+            title = safe_text(label, card_width - 2).ljust(card_width - 2)
+            mini_w, mini_h = canvas_width, canvas_height
+            mini = [[" " for _ in range(mini_w)] for _ in range(mini_h)]
+            for yy in range(mini_h):
+                for xx in range(mini_w):
+                    if yy in (0, mini_h - 1):
+                        mini[yy][xx] = "─"
+                    elif xx in (0, mini_w - 1):
+                        mini[yy][xx] = "│"
+            matching = []
+            for window in windows:
+                if workspace_index is None:
+                    if window.get("visible") is not False:
+                        matching.append(window)
+                elif window.get("sticky") is True:
+                    if active:
+                        matching.append(window)
+                elif window.get("workspace") == workspace_index:
+                    matching.append(window)
+            # Frame outlines are deliberately simple and uniform. Only focus
+            # gets a distinctive double-line border.
+            for window in matching:
+                rect = window["frame"]
+                left = max(rect["x"], bounds["x"])
+                top_edge = max(rect["y"], bounds["y"])
+                right = min(rect["x"] + rect["width"],
+                            bounds["x"] + bounds["width"])
+                lower = min(rect["y"] + rect["height"],
+                            bounds["y"] + bounds["height"])
+                if right <= left or lower <= top_edge:
                     continue
-                is_edge = yy in (y, y + h - 1) or xx in (x, x + w - 1)
-                if transparent and not is_edge:
-                    continue
-                char = fill
-                if is_edge and border:
-                    if isinstance(border, tuple):
-                        top, right = yy == y, xx == x + w - 1
-                        bottom, left = yy == y + h - 1, xx == x
-                        if top and left:
-                            char = border[2]
-                        elif top and right:
-                            char = border[3]
-                        elif bottom and left:
-                            char = border[4]
-                        elif bottom and right:
-                            char = border[5]
-                        elif top or bottom:
-                            char = border[0]
-                        else:
-                            char = border[1]
-                    else:
-                        char = border
-                if (merge and canvas[yy][xx] != " "
-                        and canvas[yy][xx] not in MONITOR_BORDER):
-                    canvas[yy][xx] = "╳"
-                elif not transparent or is_edge:
-                    canvas[yy][xx] = char
-        return x, y, w, h
-
-    monitor_cells = [to_screen(monitor["frame"]) for monitor in monitors]
-    for monitor in monitors:
-        draw(monitor["frame"], " ", ("┄", "┆", "┌", "┐", "└", "┘"))
-    # Clip every frame to the desktop bounds. Unverified AT-SPI extents can be
-    # useful for an approximate layout, but the ? outline keeps them distinct
-    # from exact compositor frames and the details list preserves provenance.
-    ranked = [(w, rect) for w, rect in mapped
-              if w.get("geometry_verified") and w.get("z_verified")]
-    minimum = min((w["z"] for w, _ in ranked), default=0)
-    maximum = max((w["z"] for w, _ in ranked), default=0)
-    # Verified windows use outlined frames in observed bottom-to-top order.
-    for window, frame_rect in sorted(ranked, key=lambda pair: pair[0]["z"]):
-        shade_index = round(3 * (window["z"] - minimum) / max(1, maximum - minimum))
-        border = ACTIVE_BORDER if window.get("focused") is True else SHADES[shade_index]
-        draw(frame_rect, " ", border, transparent=True, merge=True,
-             clip_to_monitors=monitor_cells)
-    # Unknown-order frames are transparent outlines. At intersections use a
-    # neutral crossing glyph, never an apparent front-to-back relationship.
-    uncertain = [(w, rect) for w, rect in mapped
-                 if not w.get("geometry_verified") or not w.get("z_verified")]
-    for window, frame_rect in uncertain:
-        draw(frame_rect, " ", "?", transparent=True, merge=True,
-             clip_to_monitors=monitor_cells)
+                sx = max(0, min(mini_w - 1, round(
+                    (left - bounds["x"]) / max(1, bounds["width"])
+                    * (mini_w - 1))))
+                sy = max(0, min(mini_h - 1, round(
+                    (top_edge - bounds["y"]) / max(1, bounds["height"])
+                    * (mini_h - 1))))
+                ex = max(sx + 1, min(mini_w - 1, round(
+                    (right - bounds["x"]) / max(1, bounds["width"])
+                    * (mini_w - 1))))
+                ey = max(sy + 1, min(mini_h - 1, round(
+                    (lower - bounds["y"]) / max(1, bounds["height"])
+                    * (mini_h - 1))))
+                border = "?" if not window.get("geometry_verified") else "═" if window.get("focused") else "─"
+                for xx in range(sx, ex + 1):
+                    mini[sy][xx] = mini[ey][xx] = border
+                for yy in range(sy, ey + 1):
+                    mini[yy][sx] = mini[yy][ex] = "║" if border == "═" else "?" if border == "?" else "│"
+            pad_left = (card_width - 6 - mini_w) // 2
+            pad_right = card_width - 6 - mini_w - pad_left
+            card = ["┌" + "─" * (card_width - 2) + "┐",
+                    "│" + title + "│"]
+            card.extend("│  " + " " * pad_left + "".join(line)
+                        + " " * pad_right + "  │" for line in mini)
+            card.append("└" + "─" * (card_width - 2) + "┘")
+            rendered_cards.append(card)
+        for line_index in range(max(len(card) for card in rendered_cards)):
+            card_rows.append("  ".join(card[line_index] for card in rendered_cards))
 
     lines.append(section("DESKTOP MAP"))
-    lines.extend(box("".join(row).rstrip()) for row in canvas)
+    lines.extend(box(line) for line in card_rows)
     if color:
         colors = {
-            "░": "\x1b[38;2;96;119;139m",
-            "▒": "\x1b[38;2;131;154;173m",
-            "▓": "\x1b[38;2;175;199;219m",
-            "█": "\x1b[38;2;224;240;249m",
             "?": "\x1b[38;2;210;166;109m",
-            "┄": "\x1b[38;2;106;132;151m",
-            "┆": "\x1b[38;2;106;132;151m",
-            "┌": "\x1b[38;2;106;132;151m",
-            "┐": "\x1b[38;2;106;132;151m",
-            "└": "\x1b[38;2;106;132;151m",
-            "┘": "\x1b[38;2;106;132;151m",
-            "╳": "\x1b[38;2;226;183;116m",
-            "═": "1;38;2;255;208;112m",
-            "║": "1;38;2;255;208;112m",
-            "╔": "1;38;2;255;208;112m",
-            "╗": "1;38;2;255;208;112m",
-            "╚": "1;38;2;255;208;112m",
-            "╝": "1;38;2;255;208;112m",
+            "═": "\x1b[1;38;2;255;208;112m",
+            "║": "\x1b[1;38;2;255;208;112m",
         }
         lines = ["".join(colors[ch] + ch + "\x1b[0m" if ch in colors else ch
                           for ch in line) if line.startswith("│ ") else line
@@ -259,10 +245,12 @@ def render_spatial(frame: dict[str, Any], columns: int = 88, rows: int = 32, *,
     footer = ("--json  source-labelled data     q  quit live view" if live else
               "--json  source-labelled data     --live  refresh continuously")
     lines.extend([
-        box("█ higher stack   ░ lower stack   ═ active   ? order unknown   ╳ overlap"),
+        box("═ focused window   ─ other verified window   ? estimated frame   > active workspace"),
         tint(box(footer), "38;2;164;185;200"),
-        bottom,
     ])
+    while len(lines) < height - 1:
+        lines.append(box())
+    lines.append(bottom)
     return "\n".join(lines)
 
 

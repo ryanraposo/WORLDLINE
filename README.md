@@ -75,23 +75,24 @@ worldline geometry --live --interval 1.0  # live refresh interval, in seconds
 worldline geometry --live --title "WORLDLINE"  # exact title filter; repeatable
 ```
 
-The terminal map places monitors and window frames in logical desktop
-coordinates. Window frames are outlines clipped to each display. Verified
-outlines brighten with observed compositor stacking order; the active window
-gets a gold outline. Unverified frames use `?` edges and `╳` marks
-intersections. Intersections do not imply which window is in front. The details
-below the map list each monitor and window's coordinates, dimensions, source,
-and whether its stacking order is verified. Window names are kept outside the
-drawing so overlapping frames cannot obscure or corrupt their labels.
+The terminal map shows GNOME workspaces as a responsive grid of monitor cards.
+The active workspace is marked with `>`; each card contains small outlines for
+its windows. The focused window uses a distinctive double border, other
+verified windows use a consistent solid border, and estimated frames use `?`.
+Sticky windows appear in the active card only. Workspace assignments, the
+active workspace, and sticky status come from the trusted WORLDLINE GNOME Shell
+helper; when those facts are unavailable, the map says `WORKSPACE ?` instead
+of guessing. Window names and geometry sources remain in the details below the
+map, outside the drawings.
 
 `--live` requires an interactive terminal. It reads trusted compositor frames
 directly and redraws in the terminal's alternate screen, keeping refreshes out
 of scrollback. Press `q` to exit; the previous terminal screen is restored.
 `--json` returns the
-`worldline.spatial-frame/1` projection, including the source and verification
-status for each frame. It does not upgrade uncertain observations into exact
-ones. Use the ordinary `windows` facts or the JSON Lines query API when you need
-full evidence receipts.
+`worldline.spatial-frame/1` projection, including workspace membership and the
+source and verification status for each frame. It does not upgrade uncertain
+observations into exact ones. Use the ordinary `windows` facts or the JSON
+Lines query API when you need full evidence receipts.
 
 ### What geometry means
 
@@ -108,8 +109,8 @@ before its data is accepted as compositor evidence.
 Even a verified frame and stacking order describe rectangles, not rendered
 pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility
 remain unknown. Missing sources are reported as unavailable; WORLDLINE does
-not fill those gaps with inferred focus, workspaces, activation targets, or
-stacking order.
+not fill those gaps with inferred focus, workspace membership, activation
+targets, or stacking order.
 
 ## Integrate through the socket
 

@@ -1190,6 +1190,8 @@ def _windows(*, exact_only: bool = False,
             item["status"] = "verified"
             item["confidence"] = 1.0
             item["stacking"] = candidate.get("stacking")
+            item["workspace"] = candidate.get("workspace")
+            item["sticky"] = candidate.get("sticky")
             item["focused"] = candidate.get("focused") is True
             item["visible"] = candidate.get("visible") is True
             item["minimized"] = candidate.get("minimized") is True
@@ -1252,6 +1254,8 @@ def _windows(*, exact_only: bool = False,
             "status": "geometry_only", "confidence": 1.0,
             "sources": ["worldline-gnome-shell"], "geometry_source": "worldline-gnome-shell",
             "stacking": candidate.get("stacking"),
+            "workspace": candidate.get("workspace"),
+            "sticky": candidate.get("sticky"),
         }
         item["state"] = {key: item[key] for key in (
             "active", "focused", "visible", "minimized", "shaded", "maximized", "modal")}
@@ -1304,6 +1308,7 @@ def _windows(*, exact_only: bool = False,
         } for item in canonical if item.get("focused")), None),
         "screen": screen,
         "monitors": monitors,
+        "workspaces": compositor.get("workspaces") if compositor.get("available") else None,
         "stacking_order": [item.get("stable_id") for item in sorted(
             (item for item in canonical if isinstance(item.get("stacking"), int)),
             key=lambda item: item["stacking"])] if exact else None,

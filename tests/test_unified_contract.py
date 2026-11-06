@@ -100,15 +100,19 @@ def test_exact_compositor_frame_preserves_component_extents(monkeypatch):
         "screen": {"x": 0, "y": 0, "width": 1000, "height": 800},
         "monitors": []})
     monkeypatch.setattr(observe, "_compositor_windows", lambda: {
-        "available": True, "source": "worldline-gnome-shell", "helper_api": 1,
+        "available": True, "source": "worldline-gnome-shell", "helper_api": 2,
+        "workspaces": {"count": 3, "active": 1},
         "items": [{"pid": 42, "id": 7, "title": "Editor",
                    "x": 8, "y": 19, "w": 406, "h": 306,
-                   "focused": True, "visible": True, "minimized": False}]})
+                   "focused": True, "visible": True, "minimized": False,
+                   "workspace": 1, "sticky": False}]})
     window = observe._windows()["items"][0]
     assert window["geometry"]["frame"] == {"x": 8, "y": 19, "width": 406, "height": 306}
     assert window["component_extents"] == {"x": 11, "y": 22, "width": 400, "height": 300}
     assert window["geometry"]["frame_source"] == "worldline-gnome-shell-frame"
     assert window["compositor_id"] == 7 and window["compositor_verified"]
+    assert window["workspace"] == 1 and window["sticky"] is False
+    assert observe._windows()["workspaces"] == {"count": 3, "active": 1}
 
 
 def test_shell_frames_disambiguate_same_title_and_drop_duplicate_accessibles(monkeypatch):

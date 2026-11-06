@@ -35,10 +35,11 @@ export default class WorldlineWindowFrames extends Extension {
     }
 
     GetVersion() {
-        return 1;
+        return 2;
     }
 
     GetRects() {
+        const manager = global.workspace_manager;
         const actors = global.get_window_actors();
         const frames = [];
         for (let stacking = 0; stacking < actors.length; stacking++) {
@@ -60,8 +61,16 @@ export default class WorldlineWindowFrames extends Extension {
                 visible: !window.is_hidden(),
                 minimized: window.minimized,
                 stacking,
+                workspace: window.get_workspace()?.index() ?? null,
+                sticky: window.is_on_all_workspaces(),
             });
         }
-        return JSON.stringify(frames);
+        return JSON.stringify({
+            workspaces: {
+                active: manager.get_active_workspace_index(),
+                count: manager.n_workspaces,
+            },
+            items: frames,
+        });
     }
 }
