@@ -65,6 +65,13 @@ revision and evidence, including its source and freshness. `--fresh` samples the
 requested source before returning. Window records have stable IDs that can be
 queried later through `windows.by_id`.
 
+Embodied agents can query `windows.active`, `windows.items`, `windows.focus`,
+`windows.screen`, and `windows.monitors` as separate paths. Use these when a
+consumer needs individual operating facts. Use `worldline geometry --json` for
+the coherent `worldline.spatial-frame/1` projection of screen, workspace,
+monitor, focus, and window geometry. These are read-only views; filtering a
+geometry command's output does not change the daemon's window facts.
+
 ## Explore desktop geometry
 
 ```bash
