@@ -1191,8 +1191,9 @@ def _windows(*, exact_only: bool = False,
             item["frame"] = window_geometry.rect(
                 candidate["x"], candidate["y"], candidate["w"], candidate["h"])
             item["compositor_id"] = candidate["id"]
-            # Match the public stable identity to CUA's native window_id.
-            item["stable_id"] = f"window:{candidate['pid']}:{candidate['id']}"
+            # Preserve the AT-SPI stable identity; expose Mutter's native
+            # identity separately so consumers never conflate ID namespaces.
+            item["compositor_stable_id"] = f"mutter:{candidate['pid']}:{candidate['id']}"
             item["compositor_verified"] = True
             item["sources"] = ["at-spi2", "worldline-gnome-shell"]
             item["geometry_source"] = "worldline-gnome-shell"
@@ -1251,6 +1252,7 @@ def _windows(*, exact_only: bool = False,
         frame = window_geometry.rect(candidate["x"], candidate["y"], candidate["w"], candidate["h"])
         item = {
             "id": candidate["id"], "stable_id": f"window:{candidate['pid']}:{candidate['id']}",
+            "compositor_stable_id": f"mutter:{candidate['pid']}:{candidate['id']}",
             "pid": candidate["pid"], "compositor_id": candidate["id"],
             "compositor_verified": True, "app": None, "title": candidate.get("title", ""),
             "frame": frame, "focused": candidate.get("focused") is True,
@@ -1307,6 +1309,7 @@ def _windows(*, exact_only: bool = False,
         "focus": next(({
             "stable_id": item.get("stable_id"),
             "compositor_id": item.get("compositor_id"),
+            "compositor_stable_id": item.get("compositor_stable_id"),
             "cua_window_id": item.get("cua_window_id"),
             "pid": item.get("pid"),
             "source": item.get("geometry_source"),
