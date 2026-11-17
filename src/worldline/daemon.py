@@ -9,7 +9,7 @@ import socket
 import stat
 from collections import defaultdict
 from threading import Lock
-from time import monotonic, time
+from time import monotonic, sleep, time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -225,15 +225,21 @@ class WorldlineDaemon:
                 return ok(req, {"revision": snapshot["revision"],
                                 "session_id": snapshot["session_id"], "window": item})
             if action == "events":
-                self.desktop.refresh()
                 try:
                     after = int(req.args.get("after_sequence", 0))
                     limit = int(req.args.get("limit", 128))
+                    timeout_ms = max(0, min(int(req.args.get("timeout_ms", 0)), 30000))
                 except (TypeError, ValueError):
-                    return error(req, "bad_request", "after_sequence and limit must be integers")
+                    return error(req, "bad_request", "event cursor, limit and timeout must be integers")
                 if after < 0 or limit < 1:
                     return error(req, "bad_request", "after_sequence must be nonnegative and limit positive")
-                return ok(req, self.desktop.events(after, limit))
+                deadline = monotonic() + timeout_ms / 1000
+                while True:
+                    self.desktop.refresh()
+                    result = self.desktop.events(after, limit)
+                    if result["events"] or result["resync_required"] or monotonic() >= deadline:
+                        return ok(req, result)
+                    sleep(min(0.25, max(0.0, deadline - monotonic())))
             return error(req, "bad_request", "action must be snapshot, resolve, events or capabilities")
         if req.op == "sources":
             return ok(req, {
