@@ -7,6 +7,7 @@ read-only: resolution never implies activation or permission to act.
 from __future__ import annotations
 
 from collections import deque
+from pathlib import Path
 from threading import RLock
 from time import time
 from typing import Any, Callable
@@ -34,16 +35,28 @@ class DesktopObservationService:
         self._events: deque[dict[str, Any]] = deque(maxlen=self.EVENT_LIMIT)
 
     @staticmethod
+    def _pid_start_time(pid: int) -> str:
+        """Read Linux process start ticks to distinguish PID reuse."""
+        try:
+            raw = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+            close = raw.rfind(")")
+            fields = raw[close + 2:].split()
+            return fields[19] if close >= 0 and len(fields) > 19 else "unknown"
+        except (OSError, UnicodeError):
+            return "unknown"
+
+    @staticmethod
     def _identity_key(item: dict[str, Any]) -> str | None:
         pid = item.get("pid")
         if type(pid) is not int or pid <= 0:
             return None
+        birth = DesktopObservationService._pid_start_time(pid)
         path = item.get("accessible_path")
         if isinstance(path, str) and path.startswith("/org/a11y/atspi/accessible/"):
-            return f"atspi:{pid}:{path}"
+            return f"atspi:{pid}:{birth}:{path}"
         compositor_id = item.get("compositor_id")
         if item.get("compositor_verified") is True and type(compositor_id) is int:
-            return f"compositor:{pid}:{compositor_id}"
+            return f"compositor:{pid}:{birth}:{compositor_id}"
         return None
 
     @staticmethod
@@ -104,6 +117,7 @@ class DesktopObservationService:
                 item["identity"] = {
                     "scope": "worldline-session",
                     "session_id": self._session_id,
+                    "process_start_time": self._pid_start_time(item["pid"]),
                     "stable": True,
                     "source_key": "atspi-accessible" if key.startswith("atspi:") else "compositor-window",
                 }
