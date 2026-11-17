@@ -6,7 +6,7 @@ APP_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/worldline"
 SOURCE="$APP_ROOT/source"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/worldline.service"
-SOCKET="${WORLDLINE_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/worldline/worldline.sock}"
+SOCKET="${WORLDLINE_SOCKET:-${XDG_RUNTIME_DIR:-/tmp/worldline-$(id -u)}/worldline/worldline.sock}"
 REPO="https://github.com/ryanraposo/WORLDLINE.git"\nINSTALL_REF="${WORLDLINE_INSTALL_REF:-main}"
 GRANT_FRAMES=0
 JSON=0
@@ -81,7 +81,7 @@ install_source(){
 
 install_service(){
   [ -x "$SOURCE/scripts/install_user_service.sh" ] || die "WORLDLINE service installer is missing from $SOURCE"
-  if [ "$GRANT_FRAMES" -eq 1 ]; then
+  if [ "$GRANT_FRAMES" -eq 1 ] || { command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions list --enabled 2>/dev/null | grep -Fxq worldline-window-frames@worldline; }; then
     WORLDLINE_GRANT_WINDOW_FRAMES=1 "$SOURCE/scripts/install_user_service.sh"
   else
     "$SOURCE/scripts/install_user_service.sh"
