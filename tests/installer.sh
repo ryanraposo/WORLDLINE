@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 installer="$ROOT/scripts/worldline-install.sh"
 bash -n "$installer"
-help="$("$installer" --help)"
+help="$("$installer" install --help)"
 grep -Fq 'install [--grant-window-frames]' <<<"$help"
 grep -Fq 'upgrade [--grant-window-frames]' <<<"$help"
 grep -Fq 'uninstall' <<<"$help"
