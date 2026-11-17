@@ -133,3 +133,15 @@ def test_monitor_layout_changes_are_revisioned_events():
     service.refresh()
     assert any(event["type"] == "display.monitors_changed"
                for event in service.events(0)["events"])
+
+
+
+def test_malformed_enumeration_does_not_destroy_known_windows():
+    values = [reading([window()]), {"available": True, "items": None}]
+    service = DesktopObservationService(lambda **_: values.pop(0))
+    first = service.refresh()
+    second = service.refresh()
+    assert second["available"] is False
+    assert second["windows"][0]["window_id"] == first["windows"][0]["window_id"]
+    assert not any(event["type"] == "window.destroyed"
+                   for event in service.events(0)["events"])
