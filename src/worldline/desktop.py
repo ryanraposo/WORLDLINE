@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import deque
 from pathlib import Path
 from threading import RLock
-from time import time
+from time import monotonic, time
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -71,7 +71,9 @@ class DesktopObservationService:
     @staticmethod
     def _frame(item: dict[str, Any]) -> dict[str, Any] | None:
         geometry = item.get("geometry")
-        frame = geometry.get("frame") if isinstance(geometry, dict) else item.get("frame")
+        frame = geometry.get("frame") if isinstance(geometry, dict) else None
+        if frame is None:
+            frame = item.get("frame")
         if not isinstance(frame, dict):
             return None
         keys = ("x", "y", "width", "height")
@@ -92,12 +94,18 @@ class DesktopObservationService:
 
     def refresh(self) -> dict[str, Any]:
         """Acquire one native observation and atomically publish its revision."""
+        started = monotonic()
         reading = self._reader(exact_only=False)
         now = time()
+        duration_ms = round((monotonic() - started) * 1000, 3)
         with self._lock:
-            if not isinstance(reading, dict) or reading.get("available") is not True:
+            if (not isinstance(reading, dict) or reading.get("available") is not True
+                    or not isinstance(reading.get("items"), list)):
                 self._source = reading if isinstance(reading, dict) else {
                     "available": False, "reason": "invalid observation response"}
+                if self._source.get("available") is True and not isinstance(self._source.get("items"), list):
+                    self._source = {**self._source, "available": False,
+                                    "reason": "window enumeration returned an invalid item list"}
                 return self._snapshot_unlocked()
 
             next_windows: dict[str, dict[str, Any]] = {}
@@ -148,6 +156,7 @@ class DesktopObservationService:
             had_previous_observation = self._observed_at is not None
             self._revision += 1
             self._observed_at = now
+            self._capture_duration_ms = duration_ms
             for item in next_windows.values():
                 item["revision"] = self._revision
                 item["observed_at"] = now
@@ -235,6 +244,7 @@ class DesktopObservationService:
             "revision": self._revision,
             "event_sequence": self._sequence,
             "observed_at": self._observed_at,
+            "capture_duration_ms": getattr(self, "_capture_duration_ms", None),
             "available": self._source.get("available") is True,
             "reason": self._source.get("reason"),
             "coordinates": {"space": "desktop-logical-px", "origin": "top-left",
