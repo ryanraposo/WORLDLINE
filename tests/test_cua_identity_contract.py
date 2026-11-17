@@ -58,6 +58,7 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
     item = snapshot["items"][0]
     assert item["compositor_id"] == compositor_id
     assert item["cua_window_id"] == cua_window_id
+    assert item["cua_window_id_source"] == "cua-driver-atspi-child-ordinal"
     assert item["compositor_verified"] is True
     assert item["stable_id"] == "window:4242:17"
     assert item["compositor_stable_id"] == f"mutter:{pid}:{compositor_id}"
