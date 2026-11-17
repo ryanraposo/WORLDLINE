@@ -970,6 +970,10 @@ def _atspi_windows() -> dict[str, Any]:
         with _AtspiTimeout():
             desktop = pyatspi.Registry.getDesktop(0)
             for app in desktop:
+                try:
+                    app_pid = app.get_process_id()
+                except Exception:
+                    app_pid = None
                 for ordinal, window in enumerate(app):
                     try:
                         role = window.getRoleName()
@@ -996,7 +1000,7 @@ def _atspi_windows() -> dict[str, Any]:
                         frame = window_geometry.rect(
                             extents.x, extents.y, extents.width, extents.height
                         )
-                        pid = window.get_process_id()
+                        pid = app_pid or window.get_process_id()
                         # Cua's GNOME-50 fallback AT-SPI handle is
                         # ((pid << 16) | direct-child ordinal), matching
                         # accessibility_window_id(pid, ordinal) in cua-driver.
