@@ -165,9 +165,16 @@ pre { max-width: 760px; margin: 36px auto 22px; padding: 24px 26px; overflow-x: 
 .install-note { font-size: .85rem; }
 
 /* Footer */
-footer { padding: 32px var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; color: #8e8b84; font-size: .78rem; }
-footer .wordmark { color: var(--paper); font-size: .78rem; }
-footer .wordmark img { width: 24px; height: 24px; }
+footer { padding: 32px var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 16px 28px; color: #8e8b84; font-size: .78rem; }
+.footer-brand { display: inline-flex; align-items: center; gap: 14px; color: var(--paper); }
+.footer-name { font-size: .78rem; font-weight: 700; letter-spacing: .2em; }
+.footer-brand img { display: block; width: 25px; height: 25px; object-fit: contain; }
+.footer-descriptor { margin-inline: auto; color: #a8a59e; letter-spacing: .025em; }
+.footer-license { flex: none; white-space: nowrap; }
+@media (max-width: 640px) {
+  footer { align-items: center; flex-direction: row; flex-wrap: wrap; gap: 14px 20px; }
+  .footer-descriptor { margin-inline: 0; }
+}
 
 /* Compact window internals before the map gets tight */
 @media (max-width: 1000px) {
