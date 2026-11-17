@@ -7,8 +7,7 @@
 
 **Operating Fact.**
 
-WORLDLINE is a line to the world agents live in. It knows where facts are. It watches, never acts; agents choose the move.
-
+WORLDLINE is a line to the world agents live in.
 ## Get started
 
 ### Managed installation
