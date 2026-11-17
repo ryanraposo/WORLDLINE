@@ -10,7 +10,8 @@ def test_gnome_extension_uses_cua_stable_sequence_for_window_ids():
 
 
 def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
-    pid, window_id = 4242, 0x1234
+    pid, compositor_id = 4242, 0x1234
+    cua_window_id = pid << 16
     monkeypatch.setattr(observe, "_atspi_windows", lambda: {
         "available": True,
         "count": 1,
@@ -18,6 +19,7 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
             "id": 17,
             "stable_id": "window:4242:17",
             "pid": pid,
+            "cua_window_id": cua_window_id,
             "title": "Editor",
             "role": "frame",
             "frame": {"x": 20, "y": 30, "width": 800, "height": 600},
@@ -34,7 +36,7 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
         "available": True,
         "items": [{
             "pid": pid,
-            "id": window_id,
+            "id": compositor_id,
             "title": "Editor",
             "x": 20,
             "y": 30,
@@ -54,9 +56,11 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
     snapshot = observe._windows()
     assert snapshot["count"] == 1
     item = snapshot["items"][0]
-    assert item["compositor_id"] == window_id
+    assert item["compositor_id"] == compositor_id
+    assert item["cua_window_id"] == cua_window_id
     assert item["compositor_verified"] is True
-    assert item["stable_id"] == f"window:{pid}:{window_id}"
+    assert item["stable_id"] == f"window:{pid}:{compositor_id}"
     assert snapshot["focus"]["pid"] == pid
-    assert snapshot["focus"]["compositor_id"] == window_id
+    assert snapshot["focus"]["compositor_id"] == compositor_id
+    assert snapshot["focus"]["cua_window_id"] == cua_window_id
     assert snapshot["focus"]["stable_id"] == item["stable_id"]
