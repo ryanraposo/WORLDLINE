@@ -40,7 +40,7 @@
         <p class="platform-note">Ubuntu · GNOME · Wayland</p>
       </div>
       <div class="hero-art">
-        <div class="hero-motion"><div class="motion-orbit motion-orbit-a"></div><div class="motion-orbit motion-orbit-b"></div><img src="assets/brand/vector/worldline-mark-motion.svg" alt="Animated WORLDLINE mark"><div class="motion-caption"><span>OPERATING FACT</span><span>OBSERVE · ESTABLISH · REVISE</span></div></div>
+        <div class="hero-motion"><img src="assets/brand/vector/worldline-mark-motion.svg" alt="Animated WORLDLINE mark"></div>
       </div>
     </section>
 
@@ -56,14 +56,14 @@
       <div class="geometry-heading"><div><p class="eyebrow">Spatial observation / 01</p><h2>The desktop is a place.<br><span>Read its geometry.</span></h2></div><p>Displays, window frames, focus, stacking, and workspace context become explicit spatial data in a shared coordinate space.</p></div>
       <div class="geometry-demo">
         <div class="geometry-toolbar"><span><i></i> GEOMETRY EXPLORER <b>/</b> SAMPLE SESSION</span><div><button class="geometry-tab active" data-view="overview">Overview</button><button class="geometry-tab" data-view="focus">Focus</button><button class="geometry-tab" data-view="workspace">Workspace</button></div></div>
-        <div class="desktop-map" id="desktop-map" data-view="overview">
-          <div class="display display-primary"><div class="display-label"><span>DISPLAY 01</span><span>2560 × 1440</span></div><div class="app-window browser-window"><div class="window-title"><i></i><i></i><i></i><span>Browser</span></div><div class="window-body"><b></b><b></b><div></div><b></b></div><small>x 180 · y 116</small></div><div class="app-window editor-window"><div class="window-title"><i></i><i></i><i></i><span>Editor · focused</span></div><div class="window-body code-body"><b></b><b></b><b></b><b></b><b></b></div><small>x 920 · y 340</small></div></div>
+        <div class="desktop-map" id="desktop-map" data-view="overview" data-focused="browser">
+          <div class="display display-primary"><div class="display-label"><span>DISPLAY 01</span><span>2560 × 1440</span></div><div class="app-window browser-window"><div class="window-title"><i></i><i></i><i></i><span>Browser · focused</span></div><div class="window-body"><b></b><b></b><div></div><b></b></div><small>x 180 · y 116</small></div><div class="app-window editor-window"><div class="window-title"><i></i><i></i><i></i><span>Editor</span></div><div class="window-body code-body"><b></b><b></b><b></b><b></b><b></b></div><small>x 920 · y 340</small></div></div>
           <div class="display display-secondary"><div class="display-label"><span>DISPLAY 02</span><span>1920 × 1080</span></div><div class="app-window chat-window"><div class="window-title"><i></i><i></i><i></i><span>Messages</span></div><div class="window-body chat-body"><b></b><b></b><b></b></div><small>x 2560 · y 0</small></div></div>
           <div class="desktop-axis">0 <span>LOGICAL DESKTOP SPACE →</span></div>
         </div>
         <div class="geometry-legend"><span><i></i> Observed window frame</span><span class="sample-label">Illustrative geometry · sample coordinates</span></div>
       </div>
-      <p class="geometry-caption" id="geometry-caption">Two displays, three windows, one focused surface — each represented as a rectangle in the same coordinate system.</p>
+      <p class="geometry-caption" id="geometry-caption">Two displays and three windows. Browser is the active surface; each frame is positioned in shared desktop coordinates.</p>
     </section>
     <section class="feature-grid" id="capabilities">
       <article class="feature feature-wide">
@@ -113,5 +113,26 @@ cd WORLDLINE
     <span>Operating Fact</span>
     <a href="https://github.com/ryanraposo/WORLDLINE">Open source · MIT License ↗</a>
   </footer>
-<script>\nconst map=document.getElementById("desktop-map"),caption=document.getElementById("geometry-caption");const copy={overview:"Two displays, three windows, one focused surface — each represented as a rectangle in the same coordinate system.",focus:"Focus identifies the active surface without obscuring the other observed window frames.",workspace:"Workspace context changes which surfaces belong to the current view while positions remain in logical desktop coordinates."};document.querySelectorAll(".geometry-tab").forEach(button=>button.addEventListener("click",()=>{map.dataset.view=button.dataset.view;document.querySelectorAll(".geometry-tab").forEach(tab=>tab.classList.toggle("active",tab===button));caption.textContent=copy[button.dataset.view];}));\n</script>\n</body>
+<script>
+const map=document.getElementById("desktop-map");
+const caption=document.getElementById("geometry-caption");
+const views={
+  overview:"Two displays and three windows. Browser is the active surface; each frame is positioned in shared desktop coordinates.",
+  focus:"Browser is focused. Its frame is emphasized while Editor and Messages remain visible in their original positions.",
+  workspace:"Workspace view: all three windows remain mapped to their displays, with Browser retaining focus."
+};
+document.querySelectorAll(".geometry-tab").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const view=button.dataset.view;
+    map.dataset.view=view;
+    map.dataset.focused="browser";
+    document.querySelectorAll(".geometry-tab").forEach(tab=>{
+      const active=tab===button;
+      tab.classList.toggle("active",active);
+      tab.setAttribute("aria-pressed",String(active));
+    });
+    caption.textContent=views[view];
+  });
+});
+</script></body>
 </html>
