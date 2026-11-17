@@ -83,7 +83,7 @@ footer .wordmark img { width: 24px; height: 24px; }
 @media(max-width:780px){.featured{align-items:flex-start;flex-direction:column}}
 
 /* Hero motion: the mark itself carries the movement. */
-.hero-art { min-height: min(44vw, 540px); display:grid; place-items:center; position:relative; overflow:hidden; border:0; background:radial-gradient(ellipse at center,#202020 0%,#0c0c0c 48%,#050505 76%); }
+.hero-art { min-height: min(44vw, 540px); display:grid; place-items:center; position:relative; overflow:hidden; border:0; background:transparent; }
 .hero-art img { display:block; position:relative; z-index:2; width:min(76%,420px); border:0; mix-blend-mode:screen; }
 .hero-motion { width:100%; min-height:inherit; display:grid; place-items:center; position:relative; }
 
@@ -147,3 +147,11 @@ footer .wordmark img { width: 24px; height: 24px; }
  .sample-label { width:100%; }
 }
 @media(max-width:430px) { .desktop-map{min-height:275px}.display-primary{height:195px}.display-secondary{height:155px}.window-title{height:18px;font-size:7px}.window-body{padding:9px}.window-body>div{height:30px} }
+
+/* Capability breadth: make the information surface legible at a glance. */
+.feature-wide h2 span { color:#aaa9a4; }
+.fact-stream { margin-top:34px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border-top:1px solid var(--line); }
+.fact-stream span { display:flex; flex-direction:column; gap:3px; padding:15px 12px 15px 0; border-bottom:1px solid var(--line); color:#e5e3dd; font:10px ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; }
+.fact-stream b { color:#89867f; font:10px ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:0; font-weight:400; }
+.feature:not(.feature-wide) p:last-child { max-width:430px; }
+@media(max-width:600px){.fact-stream{grid-template-columns:1fr}}
