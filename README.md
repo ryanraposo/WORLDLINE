@@ -5,13 +5,9 @@
 
 # WORLDLINE
 
-**Operating facts.**
+**Operating Fact.**
 
-WORLDLINE is a read-only observation service for Ubuntu desktops running GNOME on Wayland. It turns what the host and desktop can currently establish into structured, revisioned facts that people and independent tools can inspect.
-
-It records where a fact came from, when it was observed, how fresh it is, and which revision it belongs to. Consumers can refresh observations, compare revisions, and verify whether newer evidence supports a specific claim.
-
-WORLDLINE does not inject input, activate windows, or decide whether an action is safe. It supplies the observable state; the consumer remains responsible for policy and action.
+WORLDLINE is a line to the world agents live in. It knows where facts are. It watches, never acts; agents choose the move.
 
 ## Get started
 
