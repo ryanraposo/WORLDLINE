@@ -169,7 +169,6 @@ footer { padding: 32px var(--pad); display: flex; justify-content: space-between
 .footer-name { flex: none; color: var(--paper); font-size: .78rem; font-weight: 700; letter-spacing: .2em; }
 .footer-descriptor { margin-inline: auto; color: #a8a59e; letter-spacing: .025em; }
 .footer-license { flex: none; white-space: nowrap; }
-.footer-mark { display: block; flex: none; align-self: center; width: 36px; height: 36px; object-fit: contain; }
 @media (max-width: 640px) {
   footer { align-items: center; flex-direction: row; flex-wrap: wrap; gap: 14px 20px; }
   .footer-descriptor { margin-inline: 0; }
