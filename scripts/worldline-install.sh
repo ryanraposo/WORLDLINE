@@ -57,7 +57,7 @@ with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
 response=json.loads(data.split(b"\n",1)[0])
 if not response.get("ok") or "receipt" not in response.get("result",{}).get("ops",[]):
     raise SystemExit(1)
-print(json.dumps({"ok":True,"protocol":response.get("protocol"),"ops":response["result"]["ops"]},separators=(",",":")))
+print(json.dumps({"ok":True,"protocol":response.get("protocol"),"version":response["result"].get("version"),"ops":response["result"]["ops"]},separators=(",",":")) )
 PY
 }
 
