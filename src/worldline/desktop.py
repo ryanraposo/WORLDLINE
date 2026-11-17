@@ -106,9 +106,6 @@ class DesktopObservationService:
                 if self._source.get("available") is True and not isinstance(self._source.get("items"), list):
                     self._source = {**self._source, "available": False,
                                     "reason": "window enumeration returned an invalid item list"}
-                if self._source.get("available") is True and not isinstance(self._source.get("items"), list):
-                    self._source = {**self._source, "available": False,
-                                    "reason": "window enumeration returned an invalid item list"}
                 return self._snapshot_unlocked()
 
             next_windows: dict[str, dict[str, Any]] = {}
@@ -159,7 +156,6 @@ class DesktopObservationService:
             had_previous_observation = self._observed_at is not None
             self._revision += 1
             self._observed_at = now
-            self._capture_duration_ms = duration_ms
             self._capture_duration_ms = duration_ms
             for item in next_windows.values():
                 item["revision"] = self._revision
