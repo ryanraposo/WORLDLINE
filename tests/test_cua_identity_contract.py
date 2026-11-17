@@ -59,7 +59,8 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
     assert item["compositor_id"] == compositor_id
     assert item["cua_window_id"] == cua_window_id
     assert item["compositor_verified"] is True
-    assert item["stable_id"] == f"window:{pid}:{compositor_id}"
+    assert item["stable_id"] == "window:4242:17"
+    assert item["compositor_stable_id"] == f"mutter:{pid}:{compositor_id}"
     assert snapshot["focus"]["pid"] == pid
     assert snapshot["focus"]["compositor_id"] == compositor_id
     assert snapshot["focus"]["cua_window_id"] == cua_window_id
