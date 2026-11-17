@@ -59,7 +59,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          git fetch origin main --depth=1
+          git fetch origin main
           release_commit="$(git rev-parse "$RELEASE_TAG^{commit}")"
           git merge-base --is-ancestor "$release_commit" origin/main || {
             echo "Release tags must point to a commit already merged into main." >&2
