@@ -23,7 +23,7 @@
     <nav aria-label="Main navigation">
       <a href="#source">At the source</a>
       <a href="#geometry">Geometry</a>
-      <a href="#capabilities">Capabilities</a>
+      <a href="#capabilities">System map</a>
       <a class="nav-cta" href="#install">Get started</a>
     </nav>
   </header>
@@ -65,42 +65,95 @@
       </div>
       <p class="geometry-caption" id="geometry-caption">Two displays and three windows. Browser is the active surface; each frame is positioned in shared desktop coordinates.</p>
     </section>
-    <section class="feature-grid" id="capabilities">
-      <article class="feature feature-wide">
-        <p class="eyebrow">A broad view / At a glance</p>
-        <h2>Not just where things are.<br><span>What the machine can tell you.</span></h2>
-        <p>WORLDLINE brings together multiple kinds of operating context in a single structured interface: desktop topology, live window state, accessible application structure, system and session observations, and the metadata needed to understand where each fact came from and how current it is.</p>
-        <div class="fact-stream" aria-label="Examples of information WORLDLINE can expose">
-          <span>MONITORS <b>count · bounds · scale</b></span>
-          <span>WINDOWS <b>identity · title · frame</b></span>
-          <span>FOCUS <b>active surface · stacking</b></span>
-          <span>WORKSPACES <b>current · membership</b></span>
-          <span>ACCESSIBILITY <b>roles · names · hierarchy</b></span>
-          <span>SYSTEM & SESSION <b>provider-reported state</b></span>
-          <span>OBSERVATIONS <b>source · time · validity</b></span>
-          <span>REVISIONS <b>fences · receipts · change</b></span>
+    <section class="capability-atlas" id="capabilities">
+      <div class="atlas-intro">
+        <p class="eyebrow">The operating picture / 16 observation sections</p>
+        <h2>A machine is more than<br><span>the screen it shows you.</span></h2>
+        <p>WORLDLINE reads across the host, its resources, the desktop session, connected interfaces, running work, and the tools available to that environment. These are distinct observation domains in one revisioned snapshot — not a geometry feature with extras.</p>
+      </div>
+
+      <article class="power-feature">
+        <div class="power-copy">
+          <p class="eyebrow">Power & thermal state / A first-class observation</p>
+          <h3>Know what the machine is running on.</h3>
+          <p>Read AC connection and online state, battery charge status and percentage, remaining energy, current power draw, voltage, cycle count, estimated time to empty or full, and available thermal-zone readings.</p>
+        </div>
+        <div class="power-readout" aria-label="Examples of power and thermal facts">
+          <div><span>POWER SOURCE</span><b>AC · battery</b></div>
+          <div><span>BATTERY</span><b>charge · status · cycles</b></div>
+          <div><span>ENERGY</span><b>remaining · draw · voltage</b></div>
+          <div><span>THERMALS</span><b>temperature · zones</b></div>
+          <small>Illustrative field names, not live device readings.</small>
         </div>
       </article>
-      <article class="feature">
-        <p class="eyebrow">01 / Desktop</p>
-        <h2>Spatial context.</h2>
-        <p>Displays, logical bounds, window identities, frames, focus, stacking, and workspace relationships — a coherent account of the desktop as a place.</p>
-      </article>
-      <article class="feature">
-        <p class="eyebrow">02 / Applications</p>
-        <h2>Inside the interface.</h2>
-        <p>Where available, accessibility providers expose application and UI structure: roles, names, relationships, and element-level context beyond pixels.</p>
-      </article>
-      <article class="feature">
-        <p class="eyebrow">03 / Operating context</p>
-        <h2>More than the visible screen.</h2>
-        <p>WORLDLINE can report the system and session facts exposed by its native providers, alongside desktop observations — without pretending every provider exposes everything.</p>
-      </article>
-      <article class="feature">
-        <p class="eyebrow">04 / Evidence</p>
-        <h2>Facts with provenance.</h2>
-        <p>Source identity, observation time, validity, revisions, fences, and receipts help consumers distinguish what was observed, when, and against which known state.</p>
-      </article>
+
+      <div class="atlas-grid">
+        <article class="atlas-card">
+          <p class="eyebrow">01 / Host & hardware</p><h3>What the machine is.</h3>
+          <p>Hostname, machine and boot identity, architecture, vendor, model, board and BIOS details, GPU devices and drivers, virtualization, and container context.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">02 / Operating system</p><h3>The software foundation.</h3>
+          <p>Distribution and release, codename, kernel, architecture, libc and version, Python runtime, and locale.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">03 / Processor</p><h3>CPU capacity & activity.</h3>
+          <p>Processor model and vendor, sockets, physical and logical cores, current and min/max frequency, load averages, runnable or blocked tasks, and context switches.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">04 / Memory</p><h3>Working capacity.</h3>
+          <p>Total, used, free and available memory, buffers, cache, dirty pages, swap capacity and use, and utilization percentages.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">05 / Resource pressure</p><h3>When resources are contested.</h3>
+          <p>Kernel pressure-stall information for CPU, memory, and I/O — including some and full pressure windows where the kernel exposes them.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">06 / Storage</p><h3>Filesystems & capacity.</h3>
+          <p>Local mount targets, backing sources, filesystem types and options, total, used, free and available space, and utilization.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">07 / Network</p><h3>Connectivity & traffic.</h3>
+          <p>Interfaces, link state, addresses, MAC and MTU, wireless presence, byte and packet counters, errors and drops, routes, default gateway, DNS, and listening sockets.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">08 / Processes</p><h3>Work happening now.</h3>
+          <p>Process identity, parentage, state, resource use, and a bounded view of the busiest processes; command-line credentials are redacted before export.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">09 / Desktop & displays</p><h3>The graphical environment.</h3>
+          <p>Session type and desktop, compositor identity, screen bounds, logical monitors, connector relationships, resolution, scale, transform, primary display, and refresh rate.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">10 / Windows & accessibility</p><h3>Applications as interfaces.</h3>
+          <p>Window and application identity, title, role, accessible component extents, focus and active state, visibility, minimization, maximization, modal state, and compositor-verified frames and stacking where available.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">11 / Session</p><h3>The user's active environment.</h3>
+          <p>Session and seat identifiers, user and process context, TTY, display endpoints, runtime and D-Bus locations, SSH/root context, and selected environment values.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">12 / Audio</p><h3>Sound I/O state.</h3>
+          <p>Audio server, default output and input devices, output volume, and mute state when the audio provider is available.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">13 / Working context</p><h3>Where the work is rooted.</h3>
+          <p>Current directory, writability, filesystem device and inode, Git root, branch, HEAD commit, and detached state when inside a repository.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">14 / Available tools</p><h3>What the environment can run.</h3>
+          <p>Presence and executable paths for a broad catalogue of system, desktop, development, media, automation, and browser tools.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">15 / Time</p><h3>A shared temporal reference.</h3>
+          <p>Epoch time, millisecond timestamp, local ISO timestamp, timezone, and UTC offset.</p>
+        </article>
+        <article class="atlas-card atlas-card-meta">
+          <p class="eyebrow">16 / Evidence across the snapshot</p><h3>Every fact has a context.</h3>
+          <p>Observation source, collection time, freshness and expiry, availability, and revision. Consumers can request fresh samples, compare revisions, wait for changes, and record receipts against a shared observation state.</p>
+        </article>
+      </div>
+      <p class="atlas-footnote">The 16 named snapshot sections describe the current observation contract. Individual fields depend on the host, permissions, and native provider availability. Missing or unverifiable data stays unavailable; it is never filled in by guesswork.</p>
     </section>
 
     <section class="boundary">
