@@ -1302,6 +1302,22 @@ def _windows(*, exact_only: bool = False,
     result: dict[str, Any] = {
         "source": "worldline-gnome-shell+at-spi2" if exact else "at-spi2",
         "available": available or bool(compositor.get("available")),
+        "identity": {
+            "stable_id": {
+                "source": "at-spi2-object-path" if available else "mutter-stable-sequence",
+                "available": bool(available or compositor.get("available")),
+            },
+            "compositor_id": {
+                "source": "mutter-meta-window-stable-sequence",
+                "available": bool(compositor.get("available")),
+            },
+            "cua_window_id": {
+                "source": "cua-driver-atspi-child-ordinal",
+                "available": bool(available),
+                "version": 1,
+                "encoding": "((pid << 16) | direct_child_ordinal), with zero normalized to one",
+            },
+        },
         "count": len(canonical),
         "items": canonical,
         "by_id": {item["stable_id"]: item for item in canonical if item.get("stable_id")},
