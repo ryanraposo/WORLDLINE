@@ -970,7 +970,7 @@ def _atspi_windows() -> dict[str, Any]:
         with _AtspiTimeout():
             desktop = pyatspi.Registry.getDesktop(0)
             for app in desktop:
-                for window in app:
+                for ordinal, window in enumerate(app):
                     try:
                         role = window.getRoleName()
                         if role not in _WINDOW_ROLES:
@@ -997,6 +997,12 @@ def _atspi_windows() -> dict[str, Any]:
                             extents.x, extents.y, extents.width, extents.height
                         )
                         pid = window.get_process_id()
+                        # Cua's GNOME-50 fallback AT-SPI handle is
+                        # ((pid << 16) | direct-child ordinal), matching
+                        # accessibility_window_id(pid, ordinal) in cua-driver.
+                        cua_window_id = ((int(pid) << 16) | ordinal) if pid else None
+                        if cua_window_id == 0:
+                            cua_window_id = 1
                         path = str(getattr(window, "path", "") or "")
                         # The AT-SPI object path identifies this accessible for
                         # its process lifetime.  A role id is not a window id.
@@ -1014,6 +1020,7 @@ def _atspi_windows() -> dict[str, Any]:
                                 "stable_id": stable_id,
                                 "accessible_path": path or None,
                                 "pid": pid,
+                                "cua_window_id": cua_window_id,
                                 "app": app.name,
                                 "title": title,
                                 "role": role,
@@ -1300,6 +1307,7 @@ def _windows(*, exact_only: bool = False,
         "focus": next(({
             "stable_id": item.get("stable_id"),
             "compositor_id": item.get("compositor_id"),
+            "cua_window_id": item.get("cua_window_id"),
             "pid": item.get("pid"),
             "source": item.get("geometry_source"),
             "verified": bool(item.get("compositor_verified")),
