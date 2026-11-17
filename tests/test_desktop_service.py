@@ -1,3 +1,5 @@
+from collections import deque
+
 from worldline.desktop import DesktopObservationService
 
 
@@ -74,7 +76,7 @@ def test_unavailable_source_does_not_turn_uncertainty_into_destruction():
 
 def test_event_cursor_reports_when_consumer_must_resynchronize():
     service = DesktopObservationService(lambda **_: reading([]))
-    service.EVENT_LIMIT = 2
+    service._events = deque(maxlen=2)
     service.refresh()
     service._record("test.one", "", {})
     service._record("test.two", "", {})
