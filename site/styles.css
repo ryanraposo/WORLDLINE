@@ -218,3 +218,34 @@ footer .wordmark img { width: 24px; height: 24px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* Capability atlas: the full operating picture, not a geometry sub-feature. */
+.capability-atlas { padding: var(--section) var(--pad); background: #0c0d0c; }
+.atlas-intro { max-width: 780px; margin-bottom: clamp(36px, 6vw, 72px); }
+.atlas-intro h2 { margin: 0 0 22px; font-size: clamp(2.6rem, 5.5vw, 5rem); line-height: 1.02; letter-spacing: -.05em; }
+.atlas-intro h2 span { color: #aaa69e; }
+.atlas-intro > p:last-child { max-width: 46em; color: #b4b1aa; font-size: 1.05rem; }
+.power-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: clamp(28px, 6vw, 76px); align-items: center; margin-bottom: 18px; padding: clamp(28px, 4.5vw, 54px); background: #efeee9; color: #111; }
+.power-feature .eyebrow { color: #555; }
+.power-copy h3 { margin: 0 0 14px; font-size: clamp(1.8rem, 3.5vw, 3rem); line-height: 1.05; letter-spacing: -.045em; }
+.power-copy p:last-child { max-width: 40em; margin: 0; color: #55534e; }
+.power-readout { border-left: 1px solid #c7c5bf; padding-left: clamp(20px, 3vw, 38px); }
+.power-readout div { display: flex; flex-direction: column; gap: 3px; padding: 12px 0; border-bottom: 1px solid #cfcdc7; }
+.power-readout span, .power-readout small { color: #77736c; font: 10px/1.4 var(--mono); letter-spacing: .1em; }
+.power-readout b { font-size: .98rem; font-weight: 600; }
+.power-readout small { display: block; margin-top: 12px; letter-spacing: 0; }
+.atlas-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.atlas-card { min-height: 220px; padding: clamp(22px, 3vw, 36px); border: 1px solid var(--line); margin: 0 -1px -1px 0; }
+.atlas-card .eyebrow { margin-bottom: 15px; font-size: .62rem; }
+.atlas-card h3 { margin: 0 0 12px; font-size: clamp(1.15rem, 1.8vw, 1.5rem); line-height: 1.12; letter-spacing: -.03em; }
+.atlas-card p:last-child { margin: 0; color: var(--muted); font-size: .9rem; }
+.atlas-card-meta { background: #151715; }
+.atlas-footnote { max-width: 58em; margin: 26px 0 0; color: #85827c; font-size: .82rem; }
+@media (max-width: 1000px) { .atlas-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .power-feature { grid-template-columns: 1fr; }
+  .power-readout { border-left: 0; border-top: 1px solid #c7c5bf; padding: 14px 0 0; }
+  .atlas-grid { grid-template-columns: 1fr; }
+  .atlas-card { min-height: 0; }
+}
