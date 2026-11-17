@@ -7,7 +7,7 @@ SOURCE="$APP_ROOT/source"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/worldline.service"
 SOCKET="${WORLDLINE_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/worldline/worldline.sock}"
-REPO="https://github.com/ryanraposo/WORLDLINE.git"
+REPO="https://github.com/ryanraposo/WORLDLINE.git"\nINSTALL_REF="${WORLDLINE_INSTALL_REF:-main}"
 GRANT_FRAMES=0
 JSON=0
 COMMAND="${1:-status}"
@@ -73,7 +73,7 @@ install_source(){
   fi
   if ! managed_source; then
     mkdir -p "$APP_ROOT"
-    git clone --depth 1 "$REPO" "$SOURCE"
+    git clone --depth 1 --branch "$INSTALL_REF" "$REPO" "$SOURCE"
     printf '%s\n' 'managed-install-v1' > "$APP_ROOT/.worldline-managed"
     chmod 600 "$APP_ROOT/.worldline-managed"
   fi
