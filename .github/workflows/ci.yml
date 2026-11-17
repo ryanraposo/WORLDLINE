@@ -1,13 +1,9 @@
 name: CI
 
-# Match the last successful WORLDLINE run (2026-10-02):
-# the standard Ubuntu runner, Python 3.12, and normal pytest.
-# Standard GitHub-hosted minutes are covered by the private repo's plan quota.
 on:
   push:
     branches: [main, dev]
   pull_request:
-    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -19,12 +15,69 @@ concurrency:
 
 jobs:
   test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install development environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+      - name: Check Python syntax
+        run: python -m compileall -q src tests
+      - name: Check installer syntax
+        run: |
+          bash -n scripts/worldline-install.sh
+          bash -n scripts/install_user_service.sh
+          bash -n update.sh
+      - name: Test installer lifecycle safeguards
+        run: bash tests/installer.sh
+      - name: Run test suite
+        run: python -m pytest
+
+  package:
+    name: Build and validate distributions
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    needs: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -e '.[dev]'
-      - run: pytest
+          cache: pip
+      - name: Build source and wheel distributions
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Verify built package metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          artifacts = list(Path("dist").glob("*"))
+          assert len(artifacts) == 2, artifacts
+          assert any(path.suffix == ".whl" for path in artifacts)
+          assert any(path.name.endswith(".tar.gz") for path in artifacts)
+          for path in artifacts:
+              if path.suffix == ".whl":
+                  with zipfile.ZipFile(path) as archive:
+                      names = archive.namelist()
+                      assert any(name.endswith("worldline/__init__.py") for name in names)
+              else:
+                  with tarfile.open(path, "r:gz") as archive:
+                      names = archive.getnames()
+                      assert any(name.endswith("/src/worldline/__init__.py") for name in names)
+          PY

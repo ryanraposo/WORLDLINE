@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="A line to the world agents live in. WORLDLINE reads desktop and system facts at their source, with provenance intact.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WORLDLINE — Operating Fact">
+  <meta property="og:description" content="A line to the world agents live in.">
+  <meta property="og:image" content="assets/brand/vector/worldline-social-card.svg">
+  <title>WORLDLINE — Operating Fact</title>
+  <link rel="icon" href="assets/brand/vector/worldline-favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/inter-latin-opsz.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="#top" aria-label="WORLDLINE home">
+      <img src="assets/brand/vector/worldline-mark-reverse.svg" alt="" width="30" height="30">
+      <span>WORLDLINE</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#source">At the source</a>
+      <a href="#geometry">Geometry</a>
+      <a href="#capabilities">System map</a>
+      <a class="nav-cta" href="#install">Get started</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A clearer view of the machine</p>
+        <h1>A line to the <em>world agents live in.</em></h1>
+        <p class="lead">WORLDLINE gives software a direct, structured view of the desktop and system it inhabits — facts read where they originate, not guessed from appearances.</p>
+        <div class="hero-actions">
+          <a class="button button-light" href="#install">Install WORLDLINE</a>
+          <a class="text-link" href="https://github.com/ryanraposo/WORLDLINE">Explore the repository ↗</a>
+        </div>
+        <p class="platform-note">Ubuntu · GNOME · Wayland</p>
+      </div>
+      <div class="hero-art">
+        <div class="hero-motion"><img src="assets/brand/vector/worldline-mark-motion.svg" alt="Animated WORLDLINE mark" width="1000" height="1000" fetchpriority="high"></div>
+      </div>
+    </section>
+
+    <section class="statement" id="source">
+      <p class="eyebrow">Operating Fact</p>
+      <h2>Read the facts at their source.<br><span>Don’t infer what the system can tell you.</span></h2>
+      <p>WORLDLINE asks the components that own the facts. It reads native desktop and system interfaces, then returns structured observations with source, time, validity, and revision attached. No screenshot reconstruction. No invented certainty. No hidden provenance.</p>
+    </section>
+
+
+    <section class="geometry" id="geometry">
+      <div class="geometry-heading"><div><p class="eyebrow">Spatial observation / 01</p><h2>The desktop is a place.<br><span>Read its geometry.</span></h2></div><p>Displays, window frames, focus, stacking, and workspace context become explicit spatial data in a shared coordinate space.</p></div>
+      <div class="geometry-demo">
+        <div class="geometry-toolbar"><span><i></i> GEOMETRY EXPLORER <b>/</b> SAMPLE SESSION</span><div><button class="geometry-tab active" data-view="overview">Overview</button><button class="geometry-tab" data-view="focus">Focus</button><button class="geometry-tab" data-view="workspace">Workspace</button></div></div>
+        <div class="desktop-map" id="desktop-map" data-view="overview" data-focused="browser">
+          <div class="display display-primary"><div class="display-label"><span>DISPLAY 01</span><span>2560 × 1440</span></div><div class="app-window browser-window"><div class="window-title"><i></i><i></i><i></i><span>Browser · focused</span></div><div class="window-body"><b></b><b></b><div></div><b></b></div><small>x 180 · y 116</small></div><div class="app-window editor-window"><div class="window-title"><i></i><i></i><i></i><span>Editor</span></div><div class="window-body code-body"><b></b><b></b><b></b><b></b><b></b></div><small>x 920 · y 340</small></div></div>
+          <div class="display display-secondary"><div class="display-label"><span>DISPLAY 02</span><span>1920 × 1080</span></div><div class="app-window chat-window"><div class="window-title"><i></i><i></i><i></i><span>Messages</span></div><div class="window-body chat-body"><b></b><b></b><b></b></div><small>x 2560 · y 0</small></div></div>
+          <div class="desktop-axis">0 <span>LOGICAL DESKTOP SPACE →</span></div>
+        </div>
+        <div class="geometry-legend"><span><i></i> Observed window frame</span><span class="sample-label">Illustrative geometry · sample coordinates</span></div>
+      </div>
+      <p class="geometry-caption" id="geometry-caption">Two displays and three windows. Browser is the active surface; each frame is positioned in shared desktop coordinates.</p>
+    </section>
+    <section class="capability-atlas" id="capabilities">
+      <div class="atlas-intro">
+        <p class="eyebrow">The operating picture / 16 observation sections</p>
+        <h2>A machine is more than<br><span>the screen it shows you.</span></h2>
+        <p>WORLDLINE reads across the host, its resources, the desktop session, connected interfaces, running work, and the tools available to that environment. These are distinct observation domains in one revisioned snapshot — not a geometry feature with extras.</p>
+      </div>
+
+      <div class="atlas-manifesto" aria-label="All this information in an instant">
+        <p>All this info <em>in an instant.</em></p>
+      </div>
+
+      <div class="atlas-grid">
+        <article class="atlas-card">
+          <p class="eyebrow">01 / Power & thermal</p><h3>The machine's energy state.</h3>
+          <p>AC connection and online state, battery charge status and percentage, remaining energy, current power draw, voltage, cycle count, estimated time to empty or full, and available thermal-zone readings.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">02 / Host & hardware</p><h3>What the machine is.</h3>
+          <p>Hostname, machine and boot identity, architecture, vendor, model, board and BIOS details, GPU devices and drivers, virtualization, and container context.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">03 / Operating system</p><h3>The software foundation.</h3>
+          <p>Distribution and release, codename, kernel, architecture, libc and version, Python runtime, and locale.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">04 / Processor</p><h3>CPU capacity & activity.</h3>
+          <p>Processor model and vendor, sockets, physical and logical cores, current and min/max frequency, load averages, runnable or blocked tasks, and context switches.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">05 / Memory</p><h3>Working capacity.</h3>
+          <p>Total, used, free and available memory, buffers, cache, dirty pages, swap capacity and use, and utilization percentages.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">06 / Resource pressure</p><h3>When resources are contested.</h3>
+          <p>Kernel pressure-stall information for CPU, memory, and I/O — including some and full pressure windows where the kernel exposes them.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">07 / Storage</p><h3>Filesystems & capacity.</h3>
+          <p>Local mount targets, backing sources, filesystem types and options, total, used, free and available space, and utilization.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">08 / Network</p><h3>Connectivity & traffic.</h3>
+          <p>Interfaces, link state, addresses, MAC and MTU, wireless presence, byte and packet counters, errors and drops, routes, default gateway, DNS, and listening sockets.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">09 / Processes</p><h3>Work happening now.</h3>
+          <p>Process identity, parentage, state, resource use, and a bounded view of the busiest processes; command-line credentials are redacted before export.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">10 / Desktop & displays</p><h3>The graphical environment.</h3>
+          <p>Session type and desktop, compositor identity, screen bounds, logical monitors, connector relationships, resolution, scale, transform, primary display, and refresh rate.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">11 / Windows & accessibility</p><h3>Applications as interfaces.</h3>
+          <p>Window and application identity, title, role, accessible component extents, focus and active state, visibility, minimization, maximization, modal state, and compositor-verified frames and stacking where available.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">12 / Session</p><h3>The user's active environment.</h3>
+          <p>Session and seat identifiers, user and process context, TTY, display endpoints, runtime and D-Bus locations, SSH/root context, and selected environment values.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">13 / Audio</p><h3>Sound I/O state.</h3>
+          <p>Audio server, default output and input devices, output volume, and mute state when the audio provider is available.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">14 / Working context</p><h3>Where the work is rooted.</h3>
+          <p>Current directory, writability, filesystem device and inode, Git root, branch, HEAD commit, and detached state when inside a repository.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">15 / Available tools</p><h3>What the environment can run.</h3>
+          <p>Presence and executable paths for a broad catalogue of system, desktop, development, media, automation, and browser tools.</p>
+        </article>
+        <article class="atlas-card">
+          <p class="eyebrow">16 / Time</p><h3>A shared temporal reference.</h3>
+          <p>Epoch time, millisecond timestamp, local ISO timestamp, timezone, and UTC offset.</p>
+        </article>
+        <article class="atlas-card atlas-card-meta">
+          <p class="eyebrow">Evidence across every section</p><h3>Every fact has a context.</h3>
+          <p>Observation source, collection time, freshness and expiry, availability, and revision. Consumers can request fresh samples, compare revisions, wait for changes, and record receipts against a shared observation state.</p>
+        </article>
+      </div>
+
+    </section>
+
+    <section class="boundary">
+      <p class="eyebrow">A deliberate boundary</p>
+      <h2>WORLDLINE observes.<br>It does not act.</h2>
+      <p>No input injection. No window activation. No action policy. WORLDLINE provides a read-only observation surface across the machine’s exposed operating context; consuming systems retain responsibility for decisions and actuation.</p>
+    </section>
+
+    <section class="featured"><div><p class="eyebrow">Featured in</p><h2>GNOME Wayland Computer Use</h2><p>GWCU uses WORLDLINE as its independent source of operating facts, pairing direct desktop observation with a separate execution and verification layer.</p></div><a class="text-link" href="https://github.com/ryanraposo/gnome-wayland-computer-use">Explore GWCU ↗</a></section>
+
+    <section class="install" id="install">
+      <p class="eyebrow">Get started</p>
+      <h2>Give your tools a better view.</h2>
+      <p>WORLDLINE targets Ubuntu with GNOME on Wayland. Install the managed user service to give agents a structured view of desktop, application, and system context.</p>
+      <pre><code>sudo apt install git python3 python3-venv python3-pyatspi libglib2.0-bin zip
+git clone https://github.com/ryanraposo/WORLDLINE.git
+cd WORLDLINE
+./scripts/worldline-install.sh install
+./scripts/worldline-install.sh status</code></pre>
+      <p class="install-note">The installer asks before enabling the read-only GNOME Shell frame extension. Review the permission before approving it. WORLDLINE does not send input or activate windows.</p>
+      <div class="hero-actions">
+        <a class="button button-light" href="https://github.com/ryanraposo/WORLDLINE">View source on GitHub ↗</a>
+        <a class="text-link" href="https://github.com/ryanraposo/WORLDLINE/blob/main/README.md">Read the documentation ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="footer-name">WORLDLINE</span>
+    <span class="footer-descriptor">Operating Fact</span>
+    <a class="footer-license" href="https://github.com/ryanraposo/WORLDLINE">MIT License ↗</a>
+  </footer>
+<script>
+const map=document.getElementById("desktop-map");
+const caption=document.getElementById("geometry-caption");
+const views={
+  overview:"Two displays and three windows. Browser is the active surface; each frame is positioned in shared desktop coordinates.",
+  focus:"Browser is focused. Its frame is emphasized while Editor and Messages remain visible in their original positions.",
+  workspace:"Workspace view: all three windows remain mapped to their displays, with Browser retaining focus."
+};
+document.querySelectorAll(".geometry-tab").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const view=button.dataset.view;
+    map.dataset.view=view;
+    map.dataset.focused="browser";
+    document.querySelectorAll(".geometry-tab").forEach(tab=>{
+      const active=tab===button;
+      tab.classList.toggle("active",active);
+      tab.setAttribute("aria-pressed",String(active));
+    });
+    caption.textContent=views[view];
+  });
+});
+</script></body>
+</html>

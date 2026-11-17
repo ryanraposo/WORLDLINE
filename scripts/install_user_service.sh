@@ -35,7 +35,9 @@ if ! command -v zip >/dev/null 2>&1; then
     exit 1
 fi
 (cd "$repo_root/gnome-extension" && zip -q -j "$bundle" metadata.json extension.js)
-gnome-extensions install --force "$bundle"
+if ! gnome-extensions info "$extension_id" >/dev/null 2>&1; then
+    gnome-extensions install --force "$bundle"
+fi
 python3 - "$extension_id" <<'PY'
 import ast
 import subprocess
