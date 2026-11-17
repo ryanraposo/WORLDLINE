@@ -20,6 +20,7 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
             "stable_id": "window:4242:17",
             "pid": pid,
             "cua_window_id": cua_window_id,
+            "cua_window_id_source": "cua-driver-atspi-child-ordinal",
             "title": "Editor",
             "role": "frame",
             "frame": {"x": 20, "y": 30, "width": 800, "height": 600},
