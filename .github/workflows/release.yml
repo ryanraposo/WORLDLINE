@@ -55,7 +55,7 @@ jobs:
               raise SystemExit("src/worldline/__init__.py version does not match pyproject.toml")
           print(f"Verified WORLDLINE {version}")
           PY
-      - name: Install test and build dependencies
+      - name: Require release commit to be on main\n        env:\n          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}\n        run: |\n          git fetch origin main --depth=1\n          release_commit="$(git rev-parse "$RELEASE_TAG^{commit}")"\n          git merge-base --is-ancestor "$release_commit" origin/main || {\n            echo "Release tags must point to a commit already merged into main." >&2\n            exit 1\n          }\n      - name: Install test and build dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]' build twine
