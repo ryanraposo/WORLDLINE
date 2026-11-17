@@ -32,10 +32,10 @@ Resolution refreshes the observation before returning. A missing identity return
 ### Read changes
 
 ```json
-{"protocol":1,"op":"desktop","args":{"action":"events","after_sequence":0,"limit":128}}
+{"protocol":1,"op":"desktop","args":{"action":"events","after_sequence":0,"limit":128,"timeout_ms":25000}}
 ```
 
-Events are ordered by a monotonically increasing sequence and include their observation revision. Event history is bounded (512 entries). When `resync_required` is true, the consumer missed retained events and must request a new snapshot. This operation refreshes once; consumers may poll with the last received sequence.
+Events are ordered by a monotonically increasing sequence and include their observation revision. Event history is bounded (512 entries). When `resync_required` is true, the consumer missed retained events and must request a new snapshot. The optional `timeout_ms` performs a bounded long poll (0–30000 ms), refreshing the native observation while waiting. Consumers resume from the last received sequence.
 
 ### Query capabilities
 
@@ -47,7 +47,7 @@ Capabilities distinguish unavailable sources from unsupported claims. In particu
 
 ## Identity and provenance
 
-Accessible object paths are preferred as lifetime keys when available, with compositor window identity as the fallback for compositor-only windows. Public IDs are opaque UUIDs scoped to the current WORLDLINE daemon session. A window that disappears from an available observation and later reappears receives a new ID, even if its PID and compositor identifier are reused.
+Verified compositor window identity plus Linux process start time is the preferred lifetime key; AT-SPI accessible paths plus process start time provide the fallback for semantic-only windows. Public IDs are opaque UUIDs scoped to the current WORLDLINE daemon session. A window that disappears from an available observation and later reappears receives a new ID, even if its PID and compositor identifier are reused.
 
 A failed/unavailable observation does not generate destruction events. Absence is meaningful only in a successful enumeration. Each record identifies the source used for identity and geometry and marks whether compositor geometry is verified. Unsupported or unknown state fields are `null`, not false.
 
