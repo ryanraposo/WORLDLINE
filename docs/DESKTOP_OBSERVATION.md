@@ -58,4 +58,4 @@ A failed/unavailable observation does not generate destruction events. Absence i
 - **AT-SPI2:** application/window semantics, accessible identity and component extents. Extents do not independently prove compositor frames.
 - **WORLDLINE:** normalized snapshots, session identities, revisions, event journal, source metadata and capability reporting.
 
-The service does not infer alpha visibility, shaped-surface visibility, safe activation targets, or application intent. Consumers retain their own policy and action authority.
+Monitor topology changes are emitted as `display.monitors_changed`. Workspace membership is explicitly unavailable in this adapter and is returned as `null` with an unsupported capability. The service does not infer alpha visibility, shaped-surface visibility, safe activation targets, or application intent. Consumers retain their own policy and action authority.
