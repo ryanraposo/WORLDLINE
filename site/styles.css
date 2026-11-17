@@ -249,3 +249,23 @@ footer .wordmark img { width: 24px; height: 24px; }
   .atlas-grid { grid-template-columns: 1fr; }
   .atlas-card { min-height: 0; }
 }
+
+
+/* A quiet, unifying promise above the complete observation map. */
+.atlas-manifesto {
+  margin: 0 0 clamp(24px, 4vw, 46px);
+  padding: clamp(22px, 3.2vw, 38px) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.atlas-manifesto p {
+  margin: 0;
+  font-size: clamp(2rem, 5.2vw, 4.8rem);
+  line-height: 1.02;
+  letter-spacing: -.065em;
+  font-weight: 500;
+}
+.atlas-manifesto em {
+  color: #aaa69e;
+  font-style: normal;
+}
