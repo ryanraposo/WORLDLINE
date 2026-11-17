@@ -9,7 +9,7 @@ import socket
 import stat
 from collections import defaultdict
 from threading import Lock
-from time import monotonic, time
+from time import monotonic, sleep, time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -26,6 +26,7 @@ from .observe import windows_snapshot
 from .sources import provider_description
 from .desktop_events import apply_event, capture_visual, compositor_focus_fact, direct_facts, start_atspi_sensor
 from .spatial import project_spatial
+from .desktop import DesktopObservationService
 
 
 class WorldlineDaemon:
@@ -33,6 +34,7 @@ class WorldlineDaemon:
         self.store = store or WorldStore()
         self.domain_id = str(uuid4())
         self.current = Current(self.store)
+        self.desktop = DesktopObservationService()
         self._closing = False
         self.providers = {"gnome": GNOMEProvider(), "host": HostRuntimeProvider()}
         self.provider_readings: dict[str, dict[str, Any]] = {}
@@ -204,6 +206,41 @@ class WorldlineDaemon:
                               "views": ["world"], "legacy_default": True},
                 },
             )
+        if req.op == "desktop":
+            action = req.args.get("action", "snapshot")
+            if action == "capabilities":
+                snapshot = self.desktop.refresh()
+                return ok(req, snapshot["capabilities"])
+            if action == "snapshot":
+                return ok(req, self.desktop.refresh())
+            if action == "resolve":
+                window_id = req.args.get("window_id")
+                if not isinstance(window_id, str) or not window_id:
+                    return error(req, "bad_request", "resolve requires window_id")
+                snapshot = self.desktop.refresh()
+                item = self.desktop.resolve(window_id)
+                if item is None:
+                    return error(req, "stale_window_identity",
+                                 "window identity is no longer present; enumerate and resolve again")
+                return ok(req, {"revision": snapshot["revision"],
+                                "session_id": snapshot["session_id"], "window": item})
+            if action == "events":
+                try:
+                    after = int(req.args.get("after_sequence", 0))
+                    limit = int(req.args.get("limit", 128))
+                    timeout_ms = max(0, min(int(req.args.get("timeout_ms", 0)), 30000))
+                except (TypeError, ValueError):
+                    return error(req, "bad_request", "event cursor, limit and timeout must be integers")
+                if after < 0 or limit < 1:
+                    return error(req, "bad_request", "after_sequence must be nonnegative and limit positive")
+                deadline = monotonic() + timeout_ms / 1000
+                while True:
+                    self.desktop.refresh()
+                    result = self.desktop.events(after, limit)
+                    if result["events"] or result["resync_required"] or monotonic() >= deadline:
+                        return ok(req, result)
+                    sleep(min(0.25, max(0.0, deadline - monotonic())))
+            return error(req, "bad_request", "action must be snapshot, resolve, events or capabilities")
         if req.op == "sources":
             return ok(req, {
                 "providers": [provider_description(self.providers[name])
@@ -405,7 +442,7 @@ class WorldlineDaemon:
                             if args.get("pids") or args.get("paths") or args.get("visual"):
                                 await asyncio.to_thread(self._sample, args)
                             await asyncio.sleep(0.05)
-                    elif raw.get("op") in {"observe", "query", "capture"}:
+                    elif raw.get("op") in {"observe", "query", "capture", "desktop"}:
                         async with self._blocking_slots:
                             response = await asyncio.to_thread(self.dispatch, raw)
                     else:

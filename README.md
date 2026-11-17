@@ -55,10 +55,15 @@ For a temporary CLI session or source development, use an editable virtual envir
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e '.[dev]'
+# In another terminal, start the daemon explicitly (the CLI never starts one):
+worldline-daemon
+~~~
+
+~~~bash
 worldline --fresh --explain windows.active.geometry
 ~~~
 
-The CLI can start a private on-demand daemon. WORLDLINE uses the system Python when required to access the desktop's AT-SPI bindings. The managed service installer is separate from this developer workflow.
+The CLI only queries an already-running daemon; a read never starts a persistent service as a side effect. WORLDLINE uses the system Python when required to access the desktop's AT-SPI bindings. The managed service installer is separate from this developer workflow.
 
 ## Read operating facts
 
@@ -98,6 +103,10 @@ When the WORLDLINE GNOME Shell extension is hosted by the trusted GNOME Shell, c
 
 A verified frame and stacking order describe rectangles, not rendered pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility remain unknown. Missing sources stay unavailable; WORLDLINE does not invent focus, workspace membership, activation targets, or stacking order.
 
+## Compositor-native desktop observation
+
+WORLDLINE exposes a session-scoped, revisioned desktop model through the daemon's `desktop` protocol operation. It enumerates and resolves observed window identities, reports geometry/state/provenance/capabilities, and publishes a bounded lifecycle event journal. It remains read-only; unavailable sources never become fabricated window destruction or state changes. See [the desktop observation contract](docs/DESKTOP_OBSERVATION.md) for request/response examples and identity semantics.
+
 ## Integrate through the socket
 
 The daemon exposes a user-private Unix socket using newline-delimited JSON. For example, request the spatial projection:
@@ -124,7 +133,7 @@ GWCU does not vendor WORLDLINE, install a duplicate daemon, or own WORLDLINE's s
 ./update.sh
 ~~~
 
-The updater fast-forwards the current branch, refreshes the editable environment, restarts the installed user service or on-demand daemon, and checks a fresh operating fact. It stops when the checkout has local changes.
+The updater fast-forwards the current branch, refreshes the editable environment, restarts the installed user service when one is managed, and checks a fresh operating fact from the running daemon. It stops when the checkout has local changes.
 
 ## Development and tests
 

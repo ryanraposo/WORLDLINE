@@ -49,7 +49,8 @@ export default class WorldlineWindowFrames extends Extension {
                 continue;
             const rect = window.get_frame_rect();
             const pid = window.get_pid();
-            const id = window.get_id();
+            // Match CUA's native window_id using Mutter's session-scoped stable sequence.
+            const id = window.get_stable_sequence();
             if (!Number.isInteger(pid) || pid <= 0 || !Number.isInteger(id) ||
                 rect.width <= 0 || rect.height <= 0)
                 continue;

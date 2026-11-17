@@ -37,4 +37,10 @@ if systemctl --user cat worldline.service >/dev/null 2>&1; then
 else
     .venv/bin/worldlinectl close >/dev/null 2>&1 || true
 fi
-.venv/bin/worldline --fresh os.kernel
+# The CLI only queries an already-running service. Never create a persistent
+# daemon as a side effect of this update-time integration check.
+if .venv/bin/worldlinectl hello >/dev/null 2>&1; then
+    .venv/bin/worldline --fresh os.kernel
+else
+    echo "WORLDLINE updated; no daemon is running, so no fresh fact was queried. Start it explicitly with worldline-daemon or install the user service." >&2
+fi

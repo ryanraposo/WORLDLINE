@@ -970,7 +970,11 @@ def _atspi_windows() -> dict[str, Any]:
         with _AtspiTimeout():
             desktop = pyatspi.Registry.getDesktop(0)
             for app in desktop:
-                for window in app:
+                try:
+                    app_pid = app.get_process_id()
+                except Exception:
+                    app_pid = None
+                for ordinal, window in enumerate(app):
                     try:
                         role = window.getRoleName()
                         if role not in _WINDOW_ROLES:
@@ -996,7 +1000,13 @@ def _atspi_windows() -> dict[str, Any]:
                         frame = window_geometry.rect(
                             extents.x, extents.y, extents.width, extents.height
                         )
-                        pid = window.get_process_id()
+                        pid = app_pid or window.get_process_id()
+                        # Cua's GNOME-50 fallback AT-SPI handle is
+                        # ((pid << 16) | direct-child ordinal), matching
+                        # accessibility_window_id(pid, ordinal) in cua-driver.
+                        cua_window_id = ((int(pid) << 16) | ordinal) if pid else None
+                        if cua_window_id == 0:
+                            cua_window_id = 1
                         path = str(getattr(window, "path", "") or "")
                         # The AT-SPI object path identifies this accessible for
                         # its process lifetime.  A role id is not a window id.
@@ -1014,6 +1024,8 @@ def _atspi_windows() -> dict[str, Any]:
                                 "stable_id": stable_id,
                                 "accessible_path": path or None,
                                 "pid": pid,
+                                "cua_window_id": cua_window_id,
+                                "cua_window_id_source": "cua-driver-atspi-child-ordinal" if cua_window_id is not None else None,
                                 "app": app.name,
                                 "title": title,
                                 "role": role,
@@ -1184,6 +1196,9 @@ def _windows(*, exact_only: bool = False,
             item["frame"] = window_geometry.rect(
                 candidate["x"], candidate["y"], candidate["w"], candidate["h"])
             item["compositor_id"] = candidate["id"]
+            # Preserve the AT-SPI stable identity; expose Mutter's native
+            # identity separately so consumers never conflate ID namespaces.
+            item["compositor_stable_id"] = f"mutter:{candidate['pid']}:{candidate['id']}"
             item["compositor_verified"] = True
             item["sources"] = ["at-spi2", "worldline-gnome-shell"]
             item["geometry_source"] = "worldline-gnome-shell"
@@ -1242,6 +1257,7 @@ def _windows(*, exact_only: bool = False,
         frame = window_geometry.rect(candidate["x"], candidate["y"], candidate["w"], candidate["h"])
         item = {
             "id": candidate["id"], "stable_id": f"window:{candidate['pid']}:{candidate['id']}",
+            "compositor_stable_id": f"mutter:{candidate['pid']}:{candidate['id']}",
             "pid": candidate["pid"], "compositor_id": candidate["id"],
             "compositor_verified": True, "app": None, "title": candidate.get("title", ""),
             "frame": frame, "focused": candidate.get("focused") is True,
@@ -1290,6 +1306,22 @@ def _windows(*, exact_only: bool = False,
     result: dict[str, Any] = {
         "source": "worldline-gnome-shell+at-spi2" if exact else "at-spi2",
         "available": available or bool(compositor.get("available")),
+        "identity": {
+            "stable_id": {
+                "source": "at-spi2-object-path" if available else "mutter-stable-sequence",
+                "available": bool(available or compositor.get("available")),
+            },
+            "compositor_id": {
+                "source": "mutter-meta-window-stable-sequence",
+                "available": bool(compositor.get("available")),
+            },
+            "cua_window_id": {
+                "source": "cua-driver-atspi-child-ordinal",
+                "available": bool(available),
+                "version": 1,
+                "encoding": "((pid << 16) | direct_child_ordinal), with zero normalized to one",
+            },
+        },
         "count": len(canonical),
         "items": canonical,
         "by_id": {item["stable_id"]: item for item in canonical if item.get("stable_id")},
@@ -1298,6 +1330,8 @@ def _windows(*, exact_only: bool = False,
         "focus": next(({
             "stable_id": item.get("stable_id"),
             "compositor_id": item.get("compositor_id"),
+            "compositor_stable_id": item.get("compositor_stable_id"),
+            "cua_window_id": item.get("cua_window_id"),
             "pid": item.get("pid"),
             "source": item.get("geometry_source"),
             "verified": bool(item.get("compositor_verified")),
