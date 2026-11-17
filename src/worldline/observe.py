@@ -1021,6 +1021,7 @@ def _atspi_windows() -> dict[str, Any]:
                                 "accessible_path": path or None,
                                 "pid": pid,
                                 "cua_window_id": cua_window_id,
+                                "cua_window_id_source": "cua-driver-atspi-child-ordinal" if cua_window_id is not None else None,
                                 "app": app.name,
                                 "title": title,
                                 "role": role,
