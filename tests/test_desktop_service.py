@@ -120,3 +120,16 @@ def test_daemon_desktop_operation_exposes_snapshot_resolve_and_event_cursor():
         "action": "resolve", "window_id": "window:missing"}})
     assert stale["ok"] is False
     assert stale["error"]["code"] == "stale_window_identity"
+
+
+
+def test_monitor_layout_changes_are_revisioned_events():
+    first = reading([window()])
+    second = reading([window()])
+    second["monitors"] = [{"index": 0, "connector": "DP-1", "scale": 1.5}]
+    values = [first, second]
+    service = DesktopObservationService(lambda **_: values.pop(0))
+    service.refresh()
+    service.refresh()
+    assert any(event["type"] == "display.monitors_changed"
+               for event in service.events(0)["events"])
