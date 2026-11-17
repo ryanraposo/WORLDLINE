@@ -1184,6 +1184,8 @@ def _windows(*, exact_only: bool = False,
             item["frame"] = window_geometry.rect(
                 candidate["x"], candidate["y"], candidate["w"], candidate["h"])
             item["compositor_id"] = candidate["id"]
+            # Match the public stable identity to CUA's native window_id.
+            item["stable_id"] = f"window:{candidate['pid']}:{candidate['id']}"
             item["compositor_verified"] = True
             item["sources"] = ["at-spi2", "worldline-gnome-shell"]
             item["geometry_source"] = "worldline-gnome-shell"
