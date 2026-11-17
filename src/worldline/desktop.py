@@ -145,6 +145,7 @@ class DesktopObservationService:
                 next_windows[stable_id] = item
                 next_identities[key] = stable_id
 
+            had_previous_observation = self._observed_at is not None
             self._revision += 1
             self._observed_at = now
             for item in next_windows.values():
@@ -179,7 +180,7 @@ class DesktopObservationService:
                            "monitors": self._source.get("monitors", [])}
             new_display = {"screen": reading.get("screen"),
                            "monitors": reading.get("monitors", [])}
-            if old_display != new_display and self._observed_at is not None:
+            if old_display != new_display and had_previous_observation:
                 self._record("display.monitors_changed", "", {
                     "before": old_display, "after": new_display,
                 })
