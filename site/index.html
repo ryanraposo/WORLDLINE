@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#050505">
-  <meta name="description" content="WORLDLINE turns the observable state of a GNOME Wayland desktop into structured, revisioned operating facts.">
+  <meta name="description" content="A line to the world agents live in. WORLDLINE reads desktop and system facts at their source, with provenance intact.">
   <meta property="og:type" content="website">
   <meta property="og:title" content="WORLDLINE — Operating Fact">
-  <meta property="og:description" content="A read-only, revisioned view of what the machine can establish now.">
+  <meta property="og:description" content="A line to the world agents live in.">
   <meta property="og:image" content="assets/brand/vector/worldline-social-card.svg">
   <title>WORLDLINE — Operating Fact</title>
   <link rel="icon" href="assets/brand/vector/worldline-favicon.svg" type="image/svg+xml">
@@ -22,7 +22,7 @@
     <nav aria-label="Main navigation">
       <a href="#source">At the source</a>
       <a href="#geometry">Geometry</a>
-      <a href="#integration">Integration</a>
+      <a href="#capabilities">Capabilities</a>
       <a class="nav-cta" href="#install">Get started</a>
     </nav>
   </header>
@@ -40,7 +40,7 @@
         <p class="platform-note">Ubuntu · GNOME · Wayland</p>
       </div>
       <div class="hero-art">
-        <img src="assets/brand/vector/worldline-social-card.svg" alt="WORLDLINE symbol and wordmark">
+        <div class="hero-motion"><div class="motion-orbit motion-orbit-a"></div><div class="motion-orbit motion-orbit-b"></div><img src="assets/brand/vector/worldline-mark-motion.svg" alt="Animated WORLDLINE mark"><div class="motion-caption"><span>OPERATING FACT</span><span>OBSERVE · ESTABLISH · REVISE</span></div></div>
       </div>
     </section>
 
@@ -51,6 +51,20 @@
       
     </section>
 
+
+    <section class="geometry" id="geometry">
+      <div class="geometry-heading"><div><p class="eyebrow">Spatial observation / 01</p><h2>The desktop is a place.<br><span>Read its geometry.</span></h2></div><p>Displays, window frames, focus, stacking, and workspace context become explicit spatial data in a shared coordinate space.</p></div>
+      <div class="geometry-demo">
+        <div class="geometry-toolbar"><span><i></i> GEOMETRY EXPLORER <b>/</b> SAMPLE SESSION</span><div><button class="geometry-tab active" data-view="overview">Overview</button><button class="geometry-tab" data-view="focus">Focus</button><button class="geometry-tab" data-view="workspace">Workspace</button></div></div>
+        <div class="desktop-map" id="desktop-map" data-view="overview">
+          <div class="display display-primary"><div class="display-label"><span>DISPLAY 01</span><span>2560 × 1440</span></div><div class="app-window browser-window"><div class="window-title"><i></i><i></i><i></i><span>Browser</span></div><div class="window-body"><b></b><b></b><div></div><b></b></div><small>x 180 · y 116</small></div><div class="app-window editor-window"><div class="window-title"><i></i><i></i><i></i><span>Editor · focused</span></div><div class="window-body code-body"><b></b><b></b><b></b><b></b><b></b></div><small>x 920 · y 340</small></div></div>
+          <div class="display display-secondary"><div class="display-label"><span>DISPLAY 02</span><span>1920 × 1080</span></div><div class="app-window chat-window"><div class="window-title"><i></i><i></i><i></i><span>Messages</span></div><div class="window-body chat-body"><b></b><b></b><b></b></div><small>x 2560 · y 0</small></div></div>
+          <div class="desktop-axis">0 <span>LOGICAL DESKTOP SPACE →</span></div>
+        </div>
+        <div class="geometry-legend"><span><i></i> Observed window frame</span><span class="sample-label">Illustrative geometry · sample coordinates</span></div>
+      </div>
+      <p class="geometry-caption" id="geometry-caption">Two displays, three windows, one focused surface — each represented as a rectangle in the same coordinate system.</p>
+    </section>
     <section class="feature-grid" id="capabilities">
       <article class="feature feature-wide">
         <p class="eyebrow">01 / Observe</p>
@@ -99,5 +113,5 @@ cd WORLDLINE
     <span>Operating Fact</span>
     <a href="https://github.com/ryanraposo/WORLDLINE">Open source · MIT License ↗</a>
   </footer>
-</body>
+<script>\nconst map=document.getElementById("desktop-map"),caption=document.getElementById("geometry-caption");const copy={overview:"Two displays, three windows, one focused surface — each represented as a rectangle in the same coordinate system.",focus:"Focus identifies the active surface without obscuring the other observed window frames.",workspace:"Workspace context changes which surfaces belong to the current view while positions remain in logical desktop coordinates."};document.querySelectorAll(".geometry-tab").forEach(button=>button.addEventListener("click",()=>{map.dataset.view=button.dataset.view;document.querySelectorAll(".geometry-tab").forEach(tab=>tab.classList.toggle("active",tab===button));caption.textContent=copy[button.dataset.view];}));\n</script>\n</body>
 </html>
