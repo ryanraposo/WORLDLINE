@@ -209,7 +209,8 @@ class WorldlineDaemon:
         if req.op == "desktop":
             action = req.args.get("action", "snapshot")
             if action == "capabilities":
-                return ok(req, self.desktop.snapshot()["capabilities"])
+                snapshot = self.desktop.refresh()
+                return ok(req, snapshot["capabilities"])
             if action == "snapshot":
                 return ok(req, self.desktop.refresh())
             if action == "resolve":
@@ -435,7 +436,7 @@ class WorldlineDaemon:
                             if args.get("pids") or args.get("paths") or args.get("visual"):
                                 await asyncio.to_thread(self._sample, args)
                             await asyncio.sleep(0.05)
-                    elif raw.get("op") in {"observe", "query", "capture"}:
+                    elif raw.get("op") in {"observe", "query", "capture", "desktop"}:
                         async with self._blocking_slots:
                             response = await asyncio.to_thread(self.dispatch, raw)
                     else:
