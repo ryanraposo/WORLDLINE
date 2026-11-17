@@ -18,6 +18,22 @@ whether an action is safe.
 
 WORLDLINE targets Ubuntu with GNOME on Wayland.
 
+For a persistent, managed desktop service, clone the public repository and run
+its lifecycle manager as your logged-in desktop user (not with `sudo`):
+
+```bash
+git clone https://github.com/ryanraposo/WORLDLINE.git
+cd WORLDLINE
+./scripts/worldline-install.sh install
+./scripts/worldline-install.sh status
+```
+
+The manager owns the managed checkout, user service and readiness checks. It
+asks before enabling the read-only GNOME Shell frame extension. If the extension
+needs a GNOME session reload, save your work and follow the installer's prompt.
+The manual virtual-environment workflow below is useful for development and
+one-off CLI use; it is not a substitute for the managed service lifecycle.
+
 ```bash
 sudo apt install git python3 python3-venv python3-pyatspi libglib2.0-bin
 git clone https://github.com/ryanraposo/WORLDLINE.git
