@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="WORLDLINE turns the observable state of a GNOME Wayland desktop into structured, revisioned operating facts.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WORLDLINE — Operating Fact">
+  <meta property="og:description" content="A read-only, revisioned view of what the machine can establish now.">
+  <meta property="og:image" content="assets/brand/vector/worldline-social-card.svg">
+  <title>WORLDLINE — Operating Fact</title>
+  <link rel="icon" href="assets/brand/vector/worldline-favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="#top" aria-label="WORLDLINE home">
+      <img src="assets/brand/vector/worldline-mark.svg" alt="">
+      <span>WORLDLINE</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#model">The model</a>
+      <a href="#geometry">Geometry</a>
+      <a href="#integration">Integration</a>
+      <a class="nav-cta" href="#install">Get started</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A read-only observation layer</p>
+        <h1>The machine,<br><em>as it is now.</em></h1>
+        <p class="lead">WORLDLINE turns the observable state of a desktop into operating facts: structured, sourced, time-aware, and revisioned.</p>
+        <div class="hero-actions">
+          <a class="button button-light" href="#install">Install WORLDLINE</a>
+          <a class="text-link" href="https://github.com/ryanraposo/WORLDLINE">Explore the repository ↗</a>
+        </div>
+        <p class="platform-note">Ubuntu · GNOME · Wayland</p>
+      </div>
+      <div class="hero-art">
+        <img src="assets/brand/vector/worldline-social-card.svg" alt="WORLDLINE symbol and wordmark">
+      </div>
+    </section>
+
+    <section class="statement" id="model">
+      <p class="eyebrow">Operating Fact</p>
+      <h2>Not a guess about the world.<br><span>A record of what can be established.</span></h2>
+      <p>Every observation carries its source, observation time, validity, and revision. Consumers can refresh a fact, compare it against a known boundary, and distinguish current evidence from stale or unavailable information.</p>
+      <figure class="model-figure">
+        <img src="assets/brand/vector/worldline-operating-fact.svg" alt="WORLDLINE operating fact model: world, entity, operating fact, current version, prior versions, evidence and revision">
+        <figcaption>The operating fact model — current state remains connected to its history and supporting evidence.</figcaption>
+      </figure>
+    </section>
+
+    <section class="feature-grid" id="geometry">
+      <article class="feature feature-wide">
+        <p class="eyebrow">01 / Observe</p>
+        <h2>One readable current.</h2>
+        <p>Host and desktop sources are brought together as JSON facts. Each value remains attached to the provider that observed it, with unavailable sources represented honestly rather than filled in by inference.</p>
+      </article>
+      <article class="feature">
+        <p class="eyebrow">02 / Understand</p>
+        <h2>Spatial facts, with boundaries.</h2>
+        <p>Explore monitor layout, workspaces, focus, and window geometry. Verified compositor frames stay distinct from accessibility extents and estimates.</p>
+      </article>
+      <article class="feature">
+        <p class="eyebrow">03 / Compare</p>
+        <h2>Revision-aware evidence.</h2>
+        <p>Fences and receipts let independent consumers reason about what changed after a known revision, without confusing observation with proof of an action's effect.</p>
+      </article>
+    </section>
+
+    <section class="boundary">
+      <p class="eyebrow">A deliberate boundary</p>
+      <h2>WORLDLINE observes.<br>It does not act.</h2>
+      <p>No input injection. No window activation. No action policy. WORLDLINE provides a trustworthy observation surface; the systems that consume it retain responsibility for decisions and actuation.</p>
+    </section>
+
+    <section class="integration" id="integration">
+      <div>
+        <p class="eyebrow">Independent by design</p>
+        <h2>Shared reality.<br>Separate responsibilities.</h2>
+        <p>GWCU uses WORLDLINE as an independently managed source of operating facts. GWCU owns execution policy and causal completion verification; Cua Driver remains the actuator. Both consumers can reason against the same WORLDLINE revision domain without WORLDLINE taking control of the desktop.</p>
+        <a class="text-link" href="https://github.com/ryanraposo/gnome-wayland-computer-use">Explore GWCU ↗</a>
+      </div>
+      <div class="contract">
+        <div><span>WORLDLINE</span><strong>Observe · Version · Verify facts</strong></div>
+        <div><span>GWCU</span><strong>Policy · Causal completion</strong></div>
+        <div><span>Cua Driver</span><strong>Actuate</strong></div>
+      </div>
+    </section>
+
+    <section class="install" id="install">
+      <p class="eyebrow">Get started</p>
+      <h2>Give your tools a better view.</h2>
+      <p>WORLDLINE targets Ubuntu with GNOME on Wayland. Install the managed user service from a terminal in your desktop session.</p>
+      <pre><code>sudo apt install git python3 python3-pyatspi libglib2.0-bin zip
+git clone https://github.com/ryanraposo/WORLDLINE.git
+cd WORLDLINE
+./scripts/worldline-install.sh install
+./scripts/worldline-install.sh status</code></pre>
+      <p class="install-note">The installer asks before enabling the read-only GNOME Shell frame extension. Review the permission before approving it. WORLDLINE does not send input or activate windows.</p>
+      <div class="hero-actions">
+        <a class="button button-light" href="https://github.com/ryanraposo/WORLDLINE">View source on GitHub ↗</a>
+        <a class="text-link" href="https://github.com/ryanraposo/WORLDLINE/blob/main/README.md">Read the documentation ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="wordmark" href="#top"><img src="assets/brand/vector/worldline-mark-light.svg" alt=""><span>WORLDLINE</span></a>
+    <span>Operating facts.</span>
+    <a href="https://github.com/ryanraposo/WORLDLINE">Open source · MIT License ↗</a>
+  </footer>
+</body>
+</html>

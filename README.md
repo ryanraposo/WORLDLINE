@@ -1,86 +1,69 @@
+<!-- WORLDLINE: Operating Fact -->
 <p align="center">
-  <img src="assets/banner.png" alt="WORLDLINE logo and wordmark" width="1200">
+  <img src="assets/brand/vector/worldline-readme-header.svg" alt="WORLDLINE" width="100%">
 </p>
 
 # WORLDLINE
 
 **Operating facts.**
 
-WORLDLINE observes the host and desktop, records when each fact was observed,
-and makes the current state available to people and tools as JSON. Reads can be
-refreshed before a decision; revisions let independent consumers compare new
-evidence with a known boundary.
+WORLDLINE is a read-only observation service for Ubuntu desktops running GNOME on Wayland. It turns what the host and desktop can currently establish into structured, revisioned facts that people and independent tools can inspect.
 
-WORLDLINE observes only. It does not inject input, activate windows, or decide
-whether an action is safe.
+It records where a fact came from, when it was observed, how fresh it is, and which revision it belongs to. Consumers can refresh observations, compare revisions, and verify whether newer evidence supports a specific claim.
+
+WORLDLINE does not inject input, activate windows, or decide whether an action is safe. It supplies the observable state; the consumer remains responsible for policy and action.
 
 ## Get started
 
-WORLDLINE targets Ubuntu with GNOME on Wayland.
+### Managed installation
 
-For a persistent, managed desktop service, clone the public repository and run
-its lifecycle manager as your logged-in desktop user (not with `sudo`):
+The recommended path installs a persistent user service from the public repository. Run it as the logged-in desktop user, not with sudo.
 
-```bash
+~~~bash
+sudo apt install git python3 python3-pyatspi libglib2.0-bin zip
 git clone https://github.com/ryanraposo/WORLDLINE.git
 cd WORLDLINE
 ./scripts/worldline-install.sh install
 ./scripts/worldline-install.sh status
-```
+~~~
 
-The manager owns the managed checkout, user service and readiness checks. It
-asks before enabling the read-only GNOME Shell frame extension. If the extension
-needs a GNOME session reload, save your work and follow the installer's prompt.
-The manual virtual-environment workflow below is useful for development and
-one-off CLI use; it is not a substitute for the managed service lifecycle.
+The installer owns its managed checkout, user service, and readiness checks. It will not overwrite an unmanaged checkout or service. It asks before installing and enabling the read-only GNOME Shell frame extension. Review the permission prompt: the extension exposes compositor window-frame and state information over a user-session D-Bus API; it does not send input or activate windows.
 
-```bash
-sudo apt install git python3 python3-venv python3-pyatspi libglib2.0-bin
-git clone https://github.com/ryanraposo/WORLDLINE.git
-cd WORLDLINE
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[dev]'
-worldline --fresh --explain windows.active.geometry
-```
+If GNOME needs to reload the extension, save your work and follow the installer's instructions. For unattended installation, use the explicit grant option only after the user has authorized that access:
 
-The command starts a private observation daemon when one is not already
-running. WORLDLINE uses the system Python when needed to access the desktop's
-AT-SPI bindings. Run `pytest` to check the installation.
+~~~bash
+./scripts/worldline-install.sh install --grant-window-frames
+~~~
 
-For a managed installation that stays available throughout the graphical
-session, use WORLDLINE's lifecycle manager. It keeps its source under
-`$XDG_DATA_HOME/worldline/source` (normally `~/.local/share/worldline/source`),
-owns the `worldline.service` user unit, and verifies the protocol-1 receipt
-contract over the live socket. Existing unmanaged checkouts are never replaced.
+### Lifecycle commands
 
-The installer asks before enabling WORLDLINE's GNOME Shell extension, which
-exposes a read-only session D-Bus API for compositor window frames and state.
-Session applications running as your user can call that API; WORLDLINE verifies
-that the API is hosted by the trusted GNOME Shell. The extension does not
-activate windows or send input. For an unattended install, explicitly pass
-`--grant-window-frames` only after the user has approved that permission.
-
-```bash
-./scripts/worldline-install.sh install
+~~~bash
 ./scripts/worldline-install.sh status --json
 ./scripts/worldline-install.sh start
 ./scripts/worldline-install.sh upgrade
 ./scripts/worldline-install.sh repair
 ./scripts/worldline-install.sh uninstall
-```
+~~~
 
-The older `scripts/install_user_service.sh` remains available for developers
-who intentionally want to run a service from an existing checkout. The managed
-installer never updates or removes that unmanaged checkout. It also records
-whether the frame extension pre-existed: uninstall removes it only when this
-managed installation introduced it, and restores a previously disabled
-extension to its disabled state.
+The managed source is normally stored at ~/.local/share/worldline/source. The service is a systemd user unit and the canonical socket is $XDG_RUNTIME_DIR/worldline/worldline.sock.
 
-## Read the current state
+### Developer setup
 
-```bash
-worldline                                      # full snapshot and source status
+For a temporary CLI session or source development, use an editable virtual environment instead:
+
+~~~bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+worldline --fresh --explain windows.active.geometry
+~~~
+
+The CLI can start a private on-demand daemon. WORLDLINE uses the system Python when required to access the desktop's AT-SPI bindings. The managed service installer is separate from this developer workflow.
+
+## Read operating facts
+
+~~~bash
+worldline                                      # complete snapshot and source status
 worldline os.kernel memory.percent             # selected values
 worldline windows.active.geometry              # active window geometry
 worldline --fresh windows.active.geometry      # refresh before reading
@@ -88,107 +71,77 @@ worldline --explain windows.active.geometry    # value, source, revision and age
 worldline --list                               # available sections
 worldline --list windows                       # paths in a section
 worldlinectl sources                           # provider and source catalogue
-```
+worldlinectl hello                             # socket and protocol metadata
+~~~
 
-Output is JSON. A path query returns its value. `--explain` adds the fact's
-revision and evidence, including its source and freshness. `--fresh` samples the
-requested source before returning. Window records have stable IDs that can be
-queried later through `windows.by_id`.
-
-Embodied agents can query `windows.active`, `windows.items`, `windows.focus`,
-`windows.screen`, and `windows.monitors` as separate paths. Use these when a
-consumer needs individual operating facts. Use `worldline geometry --json` for
-the coherent `worldline.spatial-frame/1` projection of screen, workspace,
-monitor, focus, and window geometry. These are read-only views; filtering a
-geometry command's output does not change the daemon's window facts.
+Output is JSON. A path query returns its value. Explain mode adds the fact's source, observation time, revision, and freshness. Fresh mode samples the requested source before returning. Window records have stable IDs that can be queried later through windows.by_id.
 
 ## Explore desktop geometry
 
-```bash
-worldline geometry                 # terminal map and source-labelled details
-worldline geometry --json          # spatial-frame JSON
-worldline geometry --live          # refresh the map; press q to quit
-worldline geometry --live --interval 1.0  # live refresh interval, in seconds
-worldline geometry --live --title "WORLDLINE"  # exact title filter; repeatable
-```
+~~~bash
+worldline geometry
+worldline geometry --json
+worldline geometry --live
+worldline geometry --live --interval 1.0
+worldline geometry --live --title "WORLDLINE"
+~~~
 
-The terminal map places monitors and window frames in logical desktop
-coordinates. Window frames are outlines clipped to each display. Verified
-outlines brighten with observed compositor stacking order; the active window
-gets a gold outline. Unverified frames use `?` edges and `╳` marks
-intersections. Intersections do not imply which window is in front. The details
-below the map list each monitor and window's coordinates, dimensions, source,
-and whether its stacking order is verified. Window names are kept outside the
-drawing so overlapping frames cannot obscure or corrupt their labels.
+The terminal view arranges monitors and window frames in logical desktop coordinates. Verified outlines follow observed compositor stacking order; the active window is highlighted. Unverified frames are visibly marked rather than presented as exact. Window names and source details appear below the drawing so overlapping frames cannot obscure labels.
 
-`--live` requires an interactive terminal. It reads trusted compositor frames
-directly and redraws in the terminal's alternate screen, keeping refreshes out
-of scrollback. Press `q` to exit; the previous terminal screen is restored.
-`--json` returns the
-`worldline.spatial-frame/1` projection, including the source and verification
-status for each frame. It does not upgrade uncertain observations into exact
-ones. Use the ordinary `windows` facts or the JSON Lines query API when you need
-full evidence receipts.
+The live view requires an interactive terminal, redraws in the alternate screen, and exits with q. The JSON view returns the worldline.spatial-frame/1 projection with source and verification status.
 
-### What geometry means
+### Geometry and evidence boundaries
 
-Monitor layout comes from Mutter DisplayConfig. AT-SPI provides application
-semantics, state, and component extents. Those extents are not proof of a
-window's compositor frame or stacking position. When WORLDLINE's GNOME Shell
-extension is hosted by the trusted GNOME Shell, its compositor frames and
-stacking can be joined to a unique same-process, same-title, overlapping
-AT-SPI match. Unmatched compositor windows remain geometry-only. The geometry
-view uses trusted Shell frames directly, without adding accessibility child
-rectangles or estimated extents. The API owner and host executable are checked
-before its data is accepted as compositor evidence.
+Monitor layout comes from Mutter DisplayConfig. AT-SPI supplies application semantics, state, and component extents; those extents alone do not prove a compositor frame or stacking position.
 
-Even a verified frame and stacking order describe rectangles, not rendered
-pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility
-remain unknown. Missing sources are reported as unavailable; WORLDLINE does
-not fill those gaps with inferred focus, workspaces, activation targets, or
-stacking order.
+When the WORLDLINE GNOME Shell extension is hosted by the trusted GNOME Shell, compositor frames and stacking can be joined to a unique same-process, same-title, overlapping AT-SPI match. Unmatched compositor windows remain geometry-only. WORLDLINE verifies the API owner and host executable before accepting compositor evidence.
+
+A verified frame and stacking order describe rectangles, not rendered pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility remain unknown. Missing sources stay unavailable; WORLDLINE does not invent focus, workspace membership, activation targets, or stacking order.
 
 ## Integrate through the socket
 
-The daemon exposes a user-private Unix socket using newline-delimited JSON.
-For example, request the spatial projection with:
+The daemon exposes a user-private Unix socket using newline-delimited JSON. For example, request the spatial projection:
 
-```json
+~~~json
 {"protocol":1,"op":"query","args":{"view":"geometry"}}
-```
+~~~
 
-The response includes a `worldline.spatial-frame/1` object. `worldlinectl hello`
-reports the socket's `domain_id`, protocol, and receipt schema.
+Protocol 1 exposes feature discovery and the fence, event, capture, wait, and receipt operations. The features response advertises the supported operations, protocol version, package version, revision domain, and receipt schema. GWCU verifies protocol 1 and receipt support before declaring the dependency ready.
 
-Protocol 1 includes `fence`, `event`, `capture`, `wait`, and `receipt` operations
-for comparing evidence across revisions. GWCU and Horner use the same
-WORLDLINE instance when they need to share a revision domain. A nested Horner
-DevKit intentionally uses a separate socket and domain. Start the WORLDLINE
-service before installing GWCU, then verify GWCU's doctor before bringing up
-Horner. If the daemon restarts, discard old fences and take a new one. A
-foreground observation alone does not establish that an application's
-intended effect occurred; a receipt identifies the specific claim that newer,
-independent evidence supports.
+Independent consumers that need to compare observations must use the same WORLDLINE instance and revision domain. If the daemon restarts, discard old fences and establish a new baseline. A foreground observation alone does not prove an application's intended effect; a receipt records the specific claim supported by newer, independent evidence.
 
-## Update an existing checkout
+### Ownership
 
-```bash
+- **WORLDLINE:** host and desktop observation, facts, source metadata, revisions, socket, readiness, and its own installation lifecycle.
+- **GWCU:** execution policy and causal completion verification.
+- **Cua Driver:** the actuator. WORLDLINE remains read-only.
+
+GWCU does not vendor WORLDLINE, install a duplicate daemon, or own WORLDLINE's service unit. GWCU's durable local state remains separate.
+
+## Update a developer checkout
+
+~~~bash
 ./update.sh
-```
+~~~
 
-The updater fast-forwards the current branch, refreshes the editable virtual
-environment, restarts the installed user service (or on-demand daemon), and
-checks a fresh operating fact. It stops if the checkout has local changes.
+The updater fast-forwards the current branch, refreshes the editable environment, restarts the installed user service or on-demand daemon, and checks a fresh operating fact. It stops when the checkout has local changes.
 
-## Development
+## Development and tests
 
-```bash
-.venv/bin/python -m pytest -q
+~~~bash
+python -m pip install -e '.[dev]'
+python -m pytest -q
+bash -n scripts/worldline-install.sh
+bash tests/installer.sh
 git diff --check
-```
+~~~
 
-The source catalogue describes each provider, its acquisition method, and read
-cost. Operating facts carry source, observation time, validity, and revision;
-source outages are represented as unavailable observations.
+The tests cover the Python observation and protocol layers, CLI behavior, geometry, source handling, and installer lifecycle safeguards. The installer checks include refusal to replace unmanaged source and service paths, and preservation of pre-existing extension state.
 
-The canonical mark and supporting artwork live in [`assets/brand/`](assets/brand/).
+## Project site and assets
+
+The project site is published with GitHub Pages from the site directory. The canonical mark, lockups, icons, social card, and supporting diagrams are maintained as vector artwork in assets/brand/. The site build copies those source assets into its deployment artifact.
+
+## License
+
+WORLDLINE is distributed under the MIT License. See LICENSE.
