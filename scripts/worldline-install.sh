@@ -73,7 +73,12 @@ install_source(){
   fi
   if ! managed_source; then
     mkdir -p "$APP_ROOT"
-    git clone --depth 1 --branch "$INSTALL_REF" "$REPO" "$SOURCE"
+    if [ -n "${WORLDLINE_INSTALL_SOURCE:-}" ]; then
+      git clone --depth 1 --branch "$INSTALL_REF" "$WORLDLINE_INSTALL_SOURCE" "$SOURCE"
+      git -C "$SOURCE" remote set-url origin "$REPO"
+    else
+      git clone --depth 1 --branch "$INSTALL_REF" "$REPO" "$SOURCE"
+    fi
     printf '%s\n' 'managed-install-v1' > "$APP_ROOT/.worldline-managed"
     chmod 600 "$APP_ROOT/.worldline-managed"
   fi
