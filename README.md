@@ -32,20 +32,31 @@ The command starts a private observation daemon when one is not already
 running. WORLDLINE uses the system Python when needed to access the desktop's
 AT-SPI bindings. Run `pytest` to check the installation.
 
-For a daemon that stays available throughout the graphical session, install the
-user service. The installer asks before enabling WORLDLINE's GNOME Shell
-extension, which exposes a read-only session D-Bus API for compositor window
-frames and state. Session applications running as your user can call that API;
-WORLDLINE verifies that the API is hosted by the trusted GNOME Shell. The
-extension does not activate windows or send input.
+For a managed installation that stays available throughout the graphical
+session, use WORLDLINE's lifecycle manager. It keeps its source under
+`$XDG_DATA_HOME/worldline/source` (normally `~/.local/share/worldline/source`),
+owns the `worldline.service` user unit, and verifies the protocol-1 receipt
+contract over the live socket. Existing unmanaged checkouts are never replaced.
+
+The installer asks before enabling WORLDLINE's GNOME Shell extension, which
+exposes a read-only session D-Bus API for compositor window frames and state.
+Session applications running as your user can call that API; WORLDLINE verifies
+that the API is hosted by the trusted GNOME Shell. The extension does not
+activate windows or send input. For an unattended install, explicitly pass
+`--grant-window-frames` only after the user has approved that permission.
 
 ```bash
-./scripts/install_user_service.sh
-systemctl --user status worldline.service
+./scripts/worldline-install.sh install
+./scripts/worldline-install.sh status --json
+./scripts/worldline-install.sh start
+./scripts/worldline-install.sh upgrade
+./scripts/worldline-install.sh repair
+./scripts/worldline-install.sh uninstall
 ```
 
-The service runs this checkout. Repository hooks restart it after local Git
-pull, merge, or checkout operations; they do not fetch updates automatically.
+The older `scripts/install_user_service.sh` remains available for developers
+who intentionally want to run a service from an existing checkout. The managed
+installer never updates or removes that unmanaged checkout.
 
 ## Read the current state
 
