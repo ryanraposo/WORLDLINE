@@ -6,6 +6,7 @@ APP_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/worldline"
 SOURCE="$APP_ROOT/source"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/worldline.service"
+EXTENSION_STATE="$APP_ROOT/.worldline-extension-state"
 SOCKET="${WORLDLINE_SOCKET:-${XDG_RUNTIME_DIR:-/tmp/worldline-$(id -u)}/worldline/worldline.sock}"
 REPO="https://github.com/ryanraposo/WORLDLINE.git"
 INSTALL_REF="${WORLDLINE_INSTALL_REF:-main}"
@@ -90,10 +91,24 @@ install_service(){
   if [ -f "$UNIT_FILE" ] && [ ! -f "$UNIT_FILE.worldline-managed" ]; then
     grep -Fq "$SOURCE/src" "$UNIT_FILE" || die "Refusing to replace an unmanaged worldline.service at $UNIT_FILE"
   fi
+  local extension_state="owned"
+  if [ -f "$EXTENSION_STATE" ]; then
+    extension_state="$(cat "$EXTENSION_STATE")"
+  elif command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions info worldline-window-frames@worldline >/dev/null 2>&1; then
+    if gnome-extensions list --enabled 2>/dev/null | grep -Fxq worldline-window-frames@worldline; then
+      extension_state="preexisting-enabled"
+    else
+      extension_state="preexisting-disabled"
+    fi
+  fi
   if [ "$GRANT_FRAMES" -eq 1 ] || { command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions list --enabled 2>/dev/null | grep -Fxq worldline-window-frames@worldline; }; then
     WORLDLINE_GRANT_WINDOW_FRAMES=1 "$SOURCE/scripts/install_user_service.sh"
   else
     "$SOURCE/scripts/install_user_service.sh"
+  fi
+  if [ ! -f "$EXTENSION_STATE" ]; then
+    printf '%s\n' "$extension_state" > "$EXTENSION_STATE"
+    chmod 600 "$EXTENSION_STATE"
   fi
   printf '%s\n' 'managed-service-v1' > "$UNIT_FILE.worldline-managed"
   chmod 600 "$UNIT_FILE.worldline-managed"
@@ -176,8 +191,12 @@ case "$COMMAND" in
       systemctl --user disable --now worldline.service >/dev/null 2>&1 || true
       rm -f "$UNIT_FILE" "$UNIT_FILE.worldline-managed"
       systemctl --user daemon-reload
-      if command -v gnome-extensions >/dev/null 2>&1; then
-        gnome-extensions uninstall worldline-window-frames@worldline >/dev/null 2>&1 || true
+      if command -v gnome-extensions >/dev/null 2>&1 && [ -f "$EXTENSION_STATE" ]; then
+        case "$(cat "$EXTENSION_STATE")" in
+          owned) gnome-extensions uninstall worldline-window-frames@worldline >/dev/null 2>&1 || true ;;
+          preexisting-disabled) gnome-extensions disable worldline-window-frames@worldline >/dev/null 2>&1 || true ;;
+          preexisting-enabled) : ;;
+        esac
       fi
     fi
     if managed_source; then
