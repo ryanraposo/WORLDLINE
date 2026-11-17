@@ -98,6 +98,10 @@ When the WORLDLINE GNOME Shell extension is hosted by the trusted GNOME Shell, c
 
 A verified frame and stacking order describe rectangles, not rendered pixels. Transparency, shaped surfaces, shadows, and actual pixel visibility remain unknown. Missing sources stay unavailable; WORLDLINE does not invent focus, workspace membership, activation targets, or stacking order.
 
+## Compositor-native desktop observation
+
+WORLDLINE exposes a session-scoped, revisioned desktop model through the daemon's `desktop` protocol operation. It enumerates and resolves observed window identities, reports geometry/state/provenance/capabilities, and publishes a bounded lifecycle event journal. It remains read-only; unavailable sources never become fabricated window destruction or state changes. See [the desktop observation contract](docs/DESKTOP_OBSERVATION.md) for request/response examples and identity semantics.
+
 ## Integrate through the socket
 
 The daemon exposes a user-private Unix socket using newline-delimited JSON. For example, request the spatial projection:
