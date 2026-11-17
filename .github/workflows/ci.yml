@@ -27,4 +27,6 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -e '.[dev]'
-      - run: bash -n scripts/worldline-install.sh\n      - run: bash tests/installer.sh\n      - run: pytest
+      - run: bash -n scripts/worldline-install.sh
+      - run: bash tests/installer.sh
+      - run: pytest
