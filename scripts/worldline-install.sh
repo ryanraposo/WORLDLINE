@@ -171,14 +171,24 @@ case "$COMMAND" in
     ;;
   uninstall)
     need systemctl
-    systemctl --user disable --now worldline.service >/dev/null 2>&1 || true
-    rm -f "$UNIT_FILE"
-    systemctl --user daemon-reload
-    if command -v gnome-extensions >/dev/null 2>&1; then
-      gnome-extensions uninstall worldline-window-frames@worldline >/dev/null 2>&1 || true
+    if [ -f "$UNIT_FILE.worldline-managed" ]; then
+      systemctl --user disable --now worldline.service >/dev/null 2>&1 || true
+      rm -f "$UNIT_FILE" "$UNIT_FILE.worldline-managed"
+      systemctl --user daemon-reload
+      if command -v gnome-extensions >/dev/null 2>&1; then
+        gnome-extensions uninstall worldline-window-frames@worldline >/dev/null 2>&1 || true
+      fi
     fi
-    if managed_source; then rm -rf "$APP_ROOT"; fi
-    printf 'WORLDLINE service uninstalled. User data and unmanaged checkouts were preserved.\n'
+    if managed_source; then
+      if [ -f "$UNIT_FILE" ] && [ ! -f "$UNIT_FILE.worldline-managed" ]; then
+        printf '%s\n' 'Preserving managed source because an unmanaged service still references it.' >&2
+      else
+        rm -rf "$SOURCE"
+        rm -f "$APP_ROOT/.worldline-managed"
+        rmdir "$APP_ROOT" 2>/dev/null || true
+      fi
+    fi
+    printf '%s\n' 'WORLDLINE managed installation uninstalled. Unmanaged services, checkouts and user data were preserved.'
     ;;
   *) die "Unknown command: $COMMAND" ;;
 esac
