@@ -94,7 +94,7 @@ install_service(){
   else
     "$SOURCE/scripts/install_user_service.sh"
   fi
-  printf '%s\\n' 'managed-service-v1' > "$UNIT_FILE.worldline-managed"
+  printf '%s\n' 'managed-service-v1' > "$UNIT_FILE.worldline-managed"
   chmod 600 "$UNIT_FILE.worldline-managed"
   verify_ready
 }
@@ -116,13 +116,13 @@ case "$COMMAND" in
   install)
     need python3; need git; need systemctl
     if rpc >/dev/null 2>&1; then
-      printf 'WORLDLINE already ready; reusing the existing protocol-1 service.\\n'
+      printf 'WORLDLINE already ready; reusing the existing protocol-1 service.\n'
       exit 0
     fi
     if [ -f "$UNIT_FILE" ] && [ ! -f "$UNIT_FILE.worldline-managed" ]; then
       systemctl --user start worldline.service || true
       if rpc >/dev/null 2>&1; then
-        printf 'WORLDLINE existing service started and verified; no files replaced.\\n'
+        printf 'WORLDLINE existing service started and verified; no files replaced.\n'
         exit 0
       fi
       die "An unmanaged worldline.service exists but is not healthy. Refusing to replace it; inspect its original checkout."
@@ -133,12 +133,12 @@ case "$COMMAND" in
   status)
     active=0; systemctl --user is-active --quiet worldline.service && active=1 || true
     payload=""
-    if payload="$(rpc 2>/dev/null)"; then ready=1; else ready=0; fi
+    if payload="$(rpc 2>/dev/null)"; then ready=1; else ready=0; payload=null; fi
     if [ "$JSON" -eq 1 ]; then
-      printf '{"installed":%s,"service_active":%s,"ready":%s,"socket":"%s","protocol":1}\n' \
+      printf '{"installed":%s,"service_active":%s,"ready":%s,"socket":"%s","contract":%s}\n' \
         "$([ -f "$UNIT_FILE" ] && printf true || printf false)" \
         "$([ "$active" -eq 1 ] && printf true || printf false)" \
-        "$([ "$ready" -eq 1 ] && printf true || printf false)" "$SOCKET"
+        "$([ "$ready" -eq 1 ] && printf true || printf false)" "$SOCKET" "$payload"
     else
       printf 'Installation: %s\nService: %s\nProtocol RPC: %s\nSocket: %s\n' \
         "$([ -f "$UNIT_FILE" ] && printf installed || printf missing)" \
