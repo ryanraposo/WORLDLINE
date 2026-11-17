@@ -55,10 +55,15 @@ For a temporary CLI session or source development, use an editable virtual envir
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e '.[dev]'
+# In another terminal, start the daemon explicitly (the CLI never starts one):
+worldline-daemon
+~~~
+
+~~~bash
 worldline --fresh --explain windows.active.geometry
 ~~~
 
-The CLI can start a private on-demand daemon. WORLDLINE uses the system Python when required to access the desktop's AT-SPI bindings. The managed service installer is separate from this developer workflow.
+The CLI only queries an already-running daemon; a read never starts a persistent service as a side effect. WORLDLINE uses the system Python when required to access the desktop's AT-SPI bindings. The managed service installer is separate from this developer workflow.
 
 ## Read operating facts
 
@@ -128,7 +133,7 @@ GWCU does not vendor WORLDLINE, install a duplicate daemon, or own WORLDLINE's s
 ./update.sh
 ~~~
 
-The updater fast-forwards the current branch, refreshes the editable environment, restarts the installed user service or on-demand daemon, and checks a fresh operating fact. It stops when the checkout has local changes.
+The updater fast-forwards the current branch, refreshes the editable environment, restarts the installed user service when one is managed, and checks a fresh operating fact from the running daemon. It stops when the checkout has local changes.
 
 ## Development and tests
 

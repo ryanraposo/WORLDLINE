@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 
 import pytest
 
@@ -39,20 +38,46 @@ def run(capsys, *args):
     return code, captured.out, captured.err
 
 
-def test_daemon_uses_an_interpreter_with_working_atspi(monkeypatch):
-    checked = []
-    monkeypatch.setattr(cli.sys, "executable", "/broken-venv/python")
-    monkeypatch.setattr(cli.shutil, "which", lambda name: "/usr/bin/python3")
+def test_cli_only_queries_an_already_running_daemon(capsys, monkeypatch, tmp_path):
+    calls = []
+    socket = str(tmp_path / "running.sock")
 
-    def probe(command, **kwargs):
-        checked.append(command[0])
-        return SimpleNamespace(returncode=1 if command[0] == "/broken-venv/python" else 0)
+    def answer(path, op, args=None, **kwargs):
+        calls.append((path, op, args, kwargs))
+        return {"ok": True, "result": {"values": {"host.hostname": "machine"}}}
 
-    monkeypatch.setattr(cli.subprocess, "run", probe)
-    executable, environment = cli._daemon_runtime()
-    assert executable == "/usr/bin/python3"
-    assert checked == ["/broken-venv/python", "/usr/bin/python3"]
-    assert environment["PYTHONPATH"].split(":")[0].endswith("/src")
+    monkeypatch.setattr(cli, "request", answer)
+    code, out, err = run(capsys, "--socket", socket, "host.hostname")
+    assert (code, json.loads(out), err) == (0, "machine", "")
+    assert calls == [(socket, "query", {
+        "fresh": False, "full": False, "paths": ["host.hostname"],
+    }, {})]
+
+
+def test_missing_daemon_fails_closed_without_starting_one(capsys, monkeypatch, tmp_path):
+    socket = str(tmp_path / "missing.sock")
+    calls = []
+
+    def unavailable(path, op, args=None, **kwargs):
+        calls.append((path, op))
+        raise FileNotFoundError(path)
+
+    monkeypatch.setattr(cli, "request", unavailable)
+    code, out, err = run(capsys, "--socket", socket, "host.hostname")
+    assert code == 3 and out == ""
+    issue = json.loads(err)
+    assert issue["error"] == "unavailable"
+    assert "not running" in issue["message"]
+    assert calls == [(socket, "query")], "the CLI must not retry or auto-start a daemon"
+
+
+def test_cli_has_no_daemon_start_machinery():
+    import inspect
+
+    source = inspect.getsource(cli)
+    assert "Popen" not in source
+    assert "start_new_session" not in source
+    assert not hasattr(cli, "_daemon_runtime")
 
 
 def test_scalar_and_multiple_path_queries_keep_value_shape(capsys, connected):
