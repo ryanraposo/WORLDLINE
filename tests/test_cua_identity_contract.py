@@ -55,6 +55,10 @@ def test_window_snapshot_maps_compositor_identity_into_stable_id(monkeypatch):
     })
 
     snapshot = observe._windows()
+    identity = snapshot["identity"]["cua_window_id"]
+    assert identity["available"] is True
+    assert identity["source"] == "cua-driver-atspi-child-ordinal"
+    assert identity["version"] == 1
     assert snapshot["count"] == 1
     item = snapshot["items"][0]
     assert item["compositor_id"] == compositor_id
