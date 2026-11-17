@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from . import __version__
 from .current import Current
 from .model import Evidence, Fact
 from .protocol import CORE_OPS, PROTOCOL_VERSION, Request, error, ok
@@ -184,6 +185,7 @@ class WorldlineDaemon:
                 req,
                 {
                     "protocol": PROTOCOL_VERSION,
+                    "version": __version__,
                     "ops": sorted(CORE_OPS),
                     "revision_domain": "worldline",
                     "domain_id": self.domain_id,

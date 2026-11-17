@@ -1,0 +1,50 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          test -s site/index.html
+          test -s site/styles.css
+          test -s assets/brand/vector/worldline-mark.svg
+          test -s assets/brand/vector/worldline-social-card.svg
+          test -s assets/brand/vector/worldline-operating-fact.svg
+          mkdir -p site/assets
+          cp -R assets/brand site/assets/brand
+          touch site/.nojekyll
+          grep -q 'WORLDLINE — Operating Fact' site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -75,8 +75,6 @@ def project_spatial(world: dict[str, Any]) -> dict[str, Any]:
             "focused": focus if type(focus) is bool else None,
             "minimized": item.get("minimized") if type(item.get("minimized")) is bool else None,
             "visible": item.get("visible") if type(item.get("visible")) is bool else None,
-            "workspace": item.get("workspace") if type(item.get("workspace")) is int else None,
-            "sticky": item.get("sticky") if type(item.get("sticky")) is bool else None,
             "geometry_source": str(geometry.get("frame_source") or item.get("geometry_source") or "unknown")[:100],
             "geometry_verified": verified,
             "activation": {
@@ -94,7 +92,7 @@ def project_spatial(world: dict[str, Any]) -> dict[str, Any]:
         "observed_at": world.get("collected_at"),
         "coordinates": {"unit": "logical_px", "origin": "desktop-top-left", "y": "down"},
         "screen": _rect(desktop.get("screen") or windows.get("screen")),
-        "workspace": windows.get("workspaces") if isinstance(windows.get("workspaces"), dict) else None,
+        "workspace": None,
         "monitors": monitors,
         "windows": items,
         "focus": {

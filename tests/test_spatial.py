@@ -12,15 +12,14 @@ def sample():
         "windows": {"items": [
             {"stable_id": "window:100:3", "compositor_id": 3,
                 "compositor_verified": True, "stacking": 2, "focused": True,
-                "title": "Editor", "workspace": 0, "sticky": False, "geometry": {
+                "title": "Editor", "geometry": {
                     "frame": {"x": -600, "y": 20, "width": 1100, "height": 680},
                     "frame_source": "worldline-gnome-shell-frame"}},
-            {"stable_id": "window:101:4", "stacking": None, "workspace": 1,
+            {"stable_id": "window:101:4", "stacking": None,
                 "title": "Terminal", "geometry": {
                     "frame": {"x": 80, "y": 200, "width": 800, "height": 480},
                     "frame_source": "at-spi2-component-extents"}},
-        ], "workspaces": {"count": 2, "active": 0},
-        "focus": {"stable_id": "window:100:3", "verified": True,
+        ], "focus": {"stable_id": "window:100:3", "verified": True,
             "source": "worldline-gnome-shell"}},
         "sources": {"windows": {"available": True, "source": "test",
             "observed_at": 90, "expires_at": 110},
@@ -36,8 +35,7 @@ def test_spatial_has_signed_monitor_coordinates_and_verified_stack():
     assert view["windows"][1]["z"] is None
     assert view["windows"][1]["geometry_verified"] is False
     assert view["windows"][0]["activation"]["safe_target_activation"] is None
-    assert view["workspace"] == {"count": 2, "active": 0}
-    assert view["windows"][0]["workspace"] == 0
+    assert view["workspace"] is None
     assert view["focus"]["verified"] is True
 
 
@@ -45,7 +43,7 @@ def test_terminal_frame_scales_and_clips_unverified_extents_with_warning():
     output = render_spatial(project_spatial(sample()), columns=100, rows=30, live=True)
     assert "WORLDLINE  /  GEOMETRY" in output
     assert "M0 " in output and "M1 " in output
-    assert "?" in output and "─" in output
+    assert "?" in output and ("▓" in output or "█" in output)
     assert "q  quit live view" in output
     assert "02 ? Terminal" in output
     assert "frame estimate(s), clipped to screen; source is unverified." in output
@@ -60,7 +58,7 @@ def test_verified_frames_are_outlines_with_bright_active_border_and_screen_clip(
     world["windows"]["items"] = [{
         "stable_id": "window:100:3", "compositor_id": 3,
         "compositor_verified": True, "stacking": 2, "focused": True,
-        "title": "Fullscreen", "visible": True, "workspace": 0,
+        "title": "Fullscreen", "visible": True,
         "geometry": {"frame": {"x": -1280, "y": 0, "width": 3200, "height": 1080},
                      "frame_source": "worldline-gnome-shell-frame"},
     }]
@@ -68,7 +66,7 @@ def test_verified_frames_are_outlines_with_bright_active_border_and_screen_clip(
     map_area = output.split("DESKTOP MAP", 1)[1].split("DISPLAYS", 1)[0]
     assert "═" in map_area
     assert "█" not in map_area
-    assert "DESKTOP 1" in map_area and "║" in map_area
+    assert "╔" in map_area and "╝" in map_area
 
 
 def test_terminal_geometry_hides_windows_from_other_workspaces():
@@ -87,46 +85,7 @@ def test_overlapping_window_labels_are_separate_and_terminal_safe():
     output = render_spatial(project_spatial(world), columns=100, rows=30)
     assert "\x1b" not in output
     assert "Bad Name" in output
-    assert "?" in output and "Bad Name" in output
-
-
-def test_workspace_cards_wrap_and_sticky_windows_only_appear_on_active_card():
-    world = sample()
-    world["windows"]["workspaces"] = {"count": 5, "active": 2}
-    world["windows"]["items"][0]["workspace"] = 2
-    world["windows"]["items"][1]["workspace"] = 1
-    world["windows"]["items"][1]["sticky"] = True
-    output = render_spatial(project_spatial(world), columns=100, rows=34)
-    map_area = output.split("DESKTOP MAP", 1)[1].split("DISPLAYS", 1)[0]
-    assert "DESKTOP 1" in map_area and "DESKTOP 5" in map_area
-    assert "> DESKTOP 3" in map_area
-    assert len(map_area.splitlines()) > 8
-
-
-def test_workspace_metadata_unavailable_is_explicit():
-    world = sample()
-    world["windows"]["workspaces"] = None
-    output = render_spatial(project_spatial(world), columns=100, rows=30)
-    assert "WORKSPACE ?" in output
-
-
-def test_workspace_thumbnail_preserves_monitor_aspect_in_terminal_cells():
-    from worldline.geometry_cli import _fit_canvas
-
-    width, height = _fit_canvas(
-        {"x": 0, "y": 0, "width": 1920, "height": 1080},
-        max_width=36, max_height=14)
-    represented_aspect = width * 0.5 / height
-    assert abs(represented_aspect - 1920 / 1080) < 0.1
-
-
-def test_colorized_workspace_borders_emit_valid_ansi_sequences():
-    import re
-
-    output = render_spatial(project_spatial(sample()), columns=100, rows=30, color=True)
-    assert "\x1b[1;38;2;255;208;112m" in output
-    stripped = re.sub(r"\x1b\[[0-9;]*m", "", output)
-    assert "1;38;2;255;208;112m" not in stripped
+    assert "╳" in output
 
 
 def test_unicode_labels_keep_panel_columns_aligned():

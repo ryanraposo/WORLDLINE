@@ -34,29 +34,6 @@ def _number(value: str) -> int:
     return int(match.group(1))
 
 
-def _parse_rects_payload(raw: str) -> tuple[list[Any], dict[str, int] | None]:
-    """Parse frames and workspace state from one Shell snapshot payload."""
-    object_start, array_start = raw.find("{"), raw.find("[")
-    if array_start >= 0 and (object_start < 0 or array_start < object_start):
-        end = raw.rfind("]")
-        parsed = json.loads(raw[array_start:end + 1]) if end >= array_start else None
-    else:
-        end = raw.rfind("}")
-        parsed = json.loads(raw[object_start:end + 1]) if object_start >= 0 and end >= object_start else None
-    if isinstance(parsed, list):
-        return parsed, None  # API 1 compatibility: no workspace evidence.
-    if not isinstance(parsed, dict) or not isinstance(parsed.get("items"), list):
-        raise ValueError("helper returned an invalid frame snapshot")
-    state = parsed.get("workspaces")
-    if not isinstance(state, dict):
-        return parsed["items"], None
-    count, active = state.get("count"), state.get("active")
-    if (type(count) is int and 1 <= count <= 128
-            and type(active) is int and 0 <= active < count):
-        return parsed["items"], {"count": count, "active": active}
-    return parsed["items"], None
-
-
 def read_windows() -> dict[str, Any]:
     """Return source-labelled frames or an explicit unavailable reading."""
     try:
@@ -79,9 +56,12 @@ def read_windows() -> dict[str, Any]:
         if version < MIN_API:
             raise ValueError("unsupported helper API")
         raw = _call(owner, PATH, f"{DEST}.GetRects")
-        data, workspace_state = _parse_rects_payload(raw)
-        if version < 2:
-            workspace_state = None
+        start, end = raw.find("["), raw.rfind("]")
+        if start < 0 or end < start:
+            raise ValueError("helper returned no frame array")
+        data = json.loads(raw[start:end + 1])
+        if not isinstance(data, list):
+            raise ValueError("helper returned an invalid frame array")
         frames = []
         seen = set()
         for item in data:
@@ -94,14 +74,9 @@ def read_windows() -> dict[str, Any]:
                     or values[2] <= 0 or values[3] <= 0 or ident in seen):
                 continue
             seen.add(ident)
-            workspace = item.get("workspace")
-            item["workspace"] = workspace if type(workspace) is int and workspace >= 0 else None
-            item["sticky"] = item.get("sticky") if type(item.get("sticky")) is bool else None
             frames.append(item)
         return {"available": True, "source": "worldline-gnome-shell",
-                "helper_api": version, "owner_pid": pid, "items": frames,
-                "workspaces": workspace_state}
+                "helper_api": version, "owner_pid": pid, "items": frames}
     except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         return {"available": False, "source": "worldline-gnome-shell",
-                "reason": f"{type(exc).__name__}: {exc}", "items": [],
-                "workspaces": None}
+                "reason": f"{type(exc).__name__}: {exc}", "items": []}
