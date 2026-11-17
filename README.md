@@ -20,7 +20,7 @@ WORLDLINE does not inject input, activate windows, or decide whether an action i
 The recommended path installs a persistent user service from the public repository. Run it as the logged-in desktop user, not with sudo.
 
 ~~~bash
-sudo apt install git python3 python3-pyatspi libglib2.0-bin zip
+sudo apt install git python3 python3-venv python3-pyatspi libglib2.0-bin zip
 git clone https://github.com/ryanraposo/WORLDLINE.git
 cd WORLDLINE
 ./scripts/worldline-install.sh install
