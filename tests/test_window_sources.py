@@ -39,6 +39,7 @@ def test_atspi_object_path_provides_window_identity(monkeypatch):
     item = observed["items"][0]
     assert item["id"] == 17
     assert item["stable_id"] == "window:4242:17"
+    assert item["cua_window_id"] == 4242 << 16
     assert item["frame"] == {"x": 20, "y": 30, "width": 400, "height": 300}
 
 
