@@ -27,7 +27,7 @@ cd WORLDLINE
 ./scripts/worldline-install.sh status
 ~~~
 
-The installer owns its managed checkout, user service, and readiness checks. It will not overwrite an unmanaged checkout or service. It asks before installing and enabling the read-only GNOME Shell frame extension. Review the permission prompt: the extension exposes compositor window-frame and state information over a user-session D-Bus API; it does not send input or activate windows.
+The installer owns its managed checkout, user service, and readiness checks. It will not overwrite an unmanaged checkout or service. It asks before installing and enabling the read-only GNOME Shell frame extension. See [installation requirements](docs/INSTALLATION.md) for the supported environment and system dependencies. Review the permission prompt: the extension exposes compositor window-frame and state information over a user-session D-Bus API; it does not send input or activate windows.
 
 If GNOME needs to reload the extension, save your work and follow the installer's instructions. For unattended installation, use the explicit grant option only after the user has authorized that access:
 
