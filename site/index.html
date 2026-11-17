@@ -67,26 +67,46 @@
     </section>
     <section class="feature-grid" id="capabilities">
       <article class="feature feature-wide">
-        <p class="eyebrow">01 / Observe</p>
-        <h2>A remarkable amount of world, in one request.</h2>
-        <p>Displays, monitor dimensions and arrangement, window identities and frames, focus, stacking, workspace context, accessible application structure, source identity, timestamps, and revisions — delivered as structured facts for agents to query and compare.</p>
+        <p class="eyebrow">A broad view / At a glance</p>
+        <h2>Not just where things are.<br><span>What the machine can tell you.</span></h2>
+        <p>WORLDLINE brings together multiple kinds of operating context in a single structured interface: desktop topology, live window state, accessible application structure, system and session observations, and the metadata needed to understand where each fact came from and how current it is.</p>
+        <div class="fact-stream" aria-label="Examples of information WORLDLINE can expose">
+          <span>MONITORS <b>count · bounds · scale</b></span>
+          <span>WINDOWS <b>identity · title · frame</b></span>
+          <span>FOCUS <b>active surface · stacking</b></span>
+          <span>WORKSPACES <b>current · membership</b></span>
+          <span>ACCESSIBILITY <b>roles · names · hierarchy</b></span>
+          <span>SYSTEM & SESSION <b>provider-reported state</b></span>
+          <span>OBSERVATIONS <b>source · time · validity</b></span>
+          <span>REVISIONS <b>fences · receipts · change</b></span>
+        </div>
       </article>
       <article class="feature">
-        <p class="eyebrow">02 / Understand</p>
-        <h2>Geometry, not guesswork.</h2>
-        <p>Explore monitor layout, workspaces, focus, and window geometry. Verified compositor frames stay distinct from accessibility extents and estimates.</p>
+        <p class="eyebrow">01 / Desktop</p>
+        <h2>Spatial context.</h2>
+        <p>Displays, logical bounds, window identities, frames, focus, stacking, and workspace relationships — a coherent account of the desktop as a place.</p>
       </article>
       <article class="feature">
-        <p class="eyebrow">03 / Compare</p>
-        <h2>Provenance travels with the fact.</h2>
-        <p>Fences and receipts let independent consumers reason about what changed after a known revision, without confusing observation with proof of an action's effect.</p>
+        <p class="eyebrow">02 / Applications</p>
+        <h2>Inside the interface.</h2>
+        <p>Where available, accessibility providers expose application and UI structure: roles, names, relationships, and element-level context beyond pixels.</p>
+      </article>
+      <article class="feature">
+        <p class="eyebrow">03 / Operating context</p>
+        <h2>More than the visible screen.</h2>
+        <p>WORLDLINE can report the system and session facts exposed by its native providers, alongside desktop observations — without pretending every provider exposes everything.</p>
+      </article>
+      <article class="feature">
+        <p class="eyebrow">04 / Evidence</p>
+        <h2>Facts with provenance.</h2>
+        <p>Source identity, observation time, validity, revisions, fences, and receipts help consumers distinguish what was observed, when, and against which known state.</p>
       </article>
     </section>
 
     <section class="boundary">
       <p class="eyebrow">A deliberate boundary</p>
       <h2>WORLDLINE observes.<br>It does not act.</h2>
-      <p>No input injection. No window activation. No action policy. WORLDLINE provides a trustworthy observation surface; the systems that consume it retain responsibility for decisions and actuation.</p>
+      <p>No input injection. No window activation. No action policy. WORLDLINE provides a read-only observation surface across the machine’s exposed operating context; consuming systems retain responsibility for decisions and actuation.</p>
     </section>
 
     <section class="featured"><div><p class="eyebrow">Featured in</p><h2>GNOME Wayland Computer Use</h2><p>GWCU uses WORLDLINE as its independent source of operating facts, pairing direct desktop observation with a separate execution and verification layer.</p></div><a class="text-link" href="https://github.com/ryanraposo/gnome-wayland-computer-use">Explore GWCU ↗</a></section>
@@ -94,7 +114,7 @@
     <section class="install" id="install">
       <p class="eyebrow">Get started</p>
       <h2>Give your tools a better view.</h2>
-      <p>WORLDLINE targets Ubuntu with GNOME on Wayland. Install the managed user service from a terminal in your desktop session.</p>
+      <p>WORLDLINE targets Ubuntu with GNOME on Wayland. Install the managed user service to give agents a structured view of desktop, application, and system context.</p>
       <pre><code>sudo apt install git python3 python3-venv python3-pyatspi libglib2.0-bin zip
 git clone https://github.com/ryanraposo/WORLDLINE.git
 cd WORLDLINE
