@@ -72,7 +72,10 @@ activate windows or send input. For an unattended install, explicitly pass
 
 The older `scripts/install_user_service.sh` remains available for developers
 who intentionally want to run a service from an existing checkout. The managed
-installer never updates or removes that unmanaged checkout.
+installer never updates or removes that unmanaged checkout. It also records
+whether the frame extension pre-existed: uninstall removes it only when this
+managed installation introduced it, and restores a previously disabled
+extension to its disabled state.
 
 ## Read the current state
 
