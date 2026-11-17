@@ -20,7 +20,7 @@
       <span>WORLDLINE</span>
     </a>
     <nav aria-label="Main navigation">
-      <a href="#model">The model</a>
+      <a href="#source">At the source</a>
       <a href="#geometry">Geometry</a>
       <a href="#integration">Integration</a>
       <a class="nav-cta" href="#install">Get started</a>
@@ -31,8 +31,8 @@
     <section class="hero">
       <div class="hero-copy">
         <p class="eyebrow">A read-only observation layer</p>
-        <h1>The machine,<br><em>as it is now.</em></h1>
-        <p class="lead">WORLDLINE turns the observable state of a desktop into operating facts: structured, sourced, time-aware, and revisioned.</p>
+        <h1>A line to the<br><em>world agents live in.</em></h1>
+        <p class="lead">WORLDLINE gives software a direct, structured view of the desktop and system it inhabits — facts read where they originate, not guessed from appearances.</p>
         <div class="hero-actions">
           <a class="button button-light" href="#install">Install WORLDLINE</a>
           <a class="text-link" href="https://github.com/ryanraposo/WORLDLINE">Explore the repository ↗</a>
@@ -44,30 +44,27 @@
       </div>
     </section>
 
-    <section class="statement" id="model">
+    <section class="statement" id="source">
       <p class="eyebrow">Operating Fact</p>
-      <h2>Not a guess about the world.<br><span>A record of what can be established.</span></h2>
-      <p>Every observation carries its source, observation time, validity, and revision. Consumers can refresh a fact, compare it against a known boundary, and distinguish current evidence from stale or unavailable information.</p>
-      <figure class="model-figure">
-        <img src="assets/brand/vector/worldline-operating-fact.svg" alt="WORLDLINE operating fact model: world, entity, operating fact, current version, prior versions, evidence and revision">
-        <figcaption>The operating fact model — current state remains connected to its history and supporting evidence.</figcaption>
-      </figure>
+      <h2>Read the facts at their source.<br><span>Don’t infer what the system can tell you.</span></h2>
+      <p>WORLDLINE asks the components that own the facts. It reads native desktop and system interfaces, then returns structured observations with source, time, validity, and revision attached. No screenshot reconstruction. No invented certainty. No hidden provenance.</p>
+      
     </section>
 
-    <section class="feature-grid" id="geometry">
+    <section class="feature-grid" id="capabilities">
       <article class="feature feature-wide">
         <p class="eyebrow">01 / Observe</p>
-        <h2>One readable current.</h2>
-        <p>Host and desktop sources are brought together as JSON facts. Each value remains attached to the provider that observed it, with unavailable sources represented honestly rather than filled in by inference.</p>
+        <h2>A remarkable amount of world, in one request.</h2>
+        <p>Displays, monitor dimensions and arrangement, window identities and frames, focus, stacking, workspace context, accessible application structure, source identity, timestamps, and revisions — delivered as structured facts for agents to query and compare.</p>
       </article>
       <article class="feature">
         <p class="eyebrow">02 / Understand</p>
-        <h2>Spatial facts, with boundaries.</h2>
+        <h2>Geometry, not guesswork.</h2>
         <p>Explore monitor layout, workspaces, focus, and window geometry. Verified compositor frames stay distinct from accessibility extents and estimates.</p>
       </article>
       <article class="feature">
         <p class="eyebrow">03 / Compare</p>
-        <h2>Revision-aware evidence.</h2>
+        <h2>Provenance travels with the fact.</h2>
         <p>Fences and receipts let independent consumers reason about what changed after a known revision, without confusing observation with proof of an action's effect.</p>
       </article>
     </section>
@@ -78,19 +75,7 @@
       <p>No input injection. No window activation. No action policy. WORLDLINE provides a trustworthy observation surface; the systems that consume it retain responsibility for decisions and actuation.</p>
     </section>
 
-    <section class="integration" id="integration">
-      <div>
-        <p class="eyebrow">Independent by design</p>
-        <h2>Shared reality.<br>Separate responsibilities.</h2>
-        <p>GWCU uses WORLDLINE as an independently managed source of operating facts. GWCU owns execution policy and causal completion verification; Cua Driver remains the actuator. Both consumers can reason against the same WORLDLINE revision domain without WORLDLINE taking control of the desktop.</p>
-        <a class="text-link" href="https://github.com/ryanraposo/gnome-wayland-computer-use">Explore GWCU ↗</a>
-      </div>
-      <div class="contract">
-        <div><span>WORLDLINE</span><strong>Observe · Version · Verify facts</strong></div>
-        <div><span>GWCU</span><strong>Policy · Causal completion</strong></div>
-        <div><span>Cua Driver</span><strong>Actuate</strong></div>
-      </div>
-    </section>
+    <section class="featured"><div><p class="eyebrow">Featured in</p><h2>GNOME Wayland Computer Use</h2><p>GWCU uses WORLDLINE as its independent source of operating facts, pairing direct desktop observation with a separate execution and verification layer.</p></div><a class="text-link" href="https://github.com/ryanraposo/gnome-wayland-computer-use">Explore GWCU ↗</a></section>
 
     <section class="install" id="install">
       <p class="eyebrow">Get started</p>
@@ -111,7 +96,7 @@ cd WORLDLINE
 
   <footer>
     <a class="wordmark" href="#top"><img src="assets/brand/vector/worldline-mark-reverse.svg" alt=""><span>WORLDLINE</span></a>
-    <span>Operating facts.</span>
+    <span>Operating Fact</span>
     <a href="https://github.com/ryanraposo/WORLDLINE">Open source · MIT License ↗</a>
   </footer>
 </body>
