@@ -86,11 +86,16 @@ install_source(){
 
 install_service(){
   [ -x "$SOURCE/scripts/install_user_service.sh" ] || die "WORLDLINE service installer is missing from $SOURCE"
+  if [ -f "$UNIT_FILE" ] && [ ! -f "$UNIT_FILE.worldline-managed" ]; then
+    grep -Fq "$SOURCE/src" "$UNIT_FILE" || die "Refusing to replace an unmanaged worldline.service at $UNIT_FILE"
+  fi
   if [ "$GRANT_FRAMES" -eq 1 ] || { command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions list --enabled 2>/dev/null | grep -Fxq worldline-window-frames@worldline; }; then
     WORLDLINE_GRANT_WINDOW_FRAMES=1 "$SOURCE/scripts/install_user_service.sh"
   else
     "$SOURCE/scripts/install_user_service.sh"
   fi
+  printf '%s\\n' 'managed-service-v1' > "$UNIT_FILE.worldline-managed"
+  chmod 600 "$UNIT_FILE.worldline-managed"
   verify_ready
 }
 
@@ -110,6 +115,18 @@ verify_ready(){
 case "$COMMAND" in
   install)
     need python3; need git; need systemctl
+    if rpc >/dev/null 2>&1; then
+      printf 'WORLDLINE already ready; reusing the existing protocol-1 service.\\n'
+      exit 0
+    fi
+    if [ -f "$UNIT_FILE" ] && [ ! -f "$UNIT_FILE.worldline-managed" ]; then
+      systemctl --user start worldline.service || true
+      if rpc >/dev/null 2>&1; then
+        printf 'WORLDLINE existing service started and verified; no files replaced.\\n'
+        exit 0
+      fi
+      die "An unmanaged worldline.service exists but is not healthy. Refusing to replace it; inspect its original checkout."
+    fi
     install_source
     install_service
     ;;
