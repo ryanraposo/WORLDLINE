@@ -122,12 +122,15 @@ class DesktopObservationService:
                     "source_key": "compositor-window" if key.startswith("compositor:") else "atspi-accessible",
                 }
                 item["state"] = self._state(raw)
+                item["client_frame"] = raw.get("component_extents")
+                item["buffer_geometry"] = None
                 item["geometry"] = {
                     **(raw.get("geometry") if isinstance(raw.get("geometry"), dict) else {}),
                     "frame": self._frame(raw),
                     "coordinate_space": "desktop-logical-px",
                     "source": raw.get("geometry_source") or "unknown",
                     "verified": raw.get("compositor_verified") is True,
+                    "buffer_size": None,
                 }
                 item["provenance"] = {
                     "identity": "worldline-gnome-shell" if key.startswith("compositor:") else "at-spi2",
@@ -136,12 +139,17 @@ class DesktopObservationService:
                     "compositor_verified": raw.get("compositor_verified") is True,
                     "quality": "compositor_verified" if raw.get("compositor_verified") is True
                                else "semantic_or_estimated",
+                    "observed_at": now,
+                    "freshness": "current-snapshot",
                 }
                 next_windows[stable_id] = item
                 next_identities[key] = stable_id
 
             self._revision += 1
             self._observed_at = now
+            for item in next_windows.values():
+                item["revision"] = self._revision
+                item["observed_at"] = now
             previous = self._windows
             for stable_id, item in next_windows.items():
                 old = previous.get(stable_id)
@@ -167,6 +175,14 @@ class DesktopObservationService:
                     self._record("window.destroyed", stable_id, {
                         "pid": item.get("pid"), "title": item.get("title"),
                     })
+            old_display = {"screen": self._source.get("screen"),
+                           "monitors": self._source.get("monitors", [])}
+            new_display = {"screen": reading.get("screen"),
+                           "monitors": reading.get("monitors", [])}
+            if old_display != new_display and self._observed_at is not None:
+                self._record("display.monitors_changed", "", {
+                    "before": old_display, "after": new_display,
+                })
             old_focus = next((key for key, item in previous.items()
                               if item.get("state", {}).get("focused") is True), None)
             new_focus = next((key for key, item in next_windows.items()
@@ -201,6 +217,8 @@ class DesktopObservationService:
                       "source": "compositor-or-atspi"},
             "stacking": {"available": self._source.get("stacking_order") is not None,
                          "source": geometry.get("name")},
+            "workspace": {"available": False,
+                          "reason": "the current GNOME observation adapter does not expose workspace membership"},
             "pixel_visibility": {"available": False,
                                  "reason": "window rectangles and stacking do not prove rendered pixels"},
             "activation": {"available": False,
@@ -228,6 +246,7 @@ class DesktopObservationService:
                            for stable_id, item in self._windows.items()
                            if item.get("state", {}).get("focused") is True), None),
             "stacking_order": self._source.get("stacking_order"),
+            "workspace": None,
             "capabilities": self._capabilities_unlocked(),
             "provenance": {
                 "source": self._source.get("source"),
