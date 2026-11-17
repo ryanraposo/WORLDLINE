@@ -51,12 +51,12 @@ class DesktopObservationService:
         if type(pid) is not int or pid <= 0:
             return None
         birth = DesktopObservationService._pid_start_time(pid)
-        path = item.get("accessible_path")
-        if isinstance(path, str) and path.startswith("/org/a11y/atspi/accessible/"):
-            return f"atspi:{pid}:{birth}:{path}"
         compositor_id = item.get("compositor_id")
         if item.get("compositor_verified") is True and type(compositor_id) is int:
             return f"compositor:{pid}:{birth}:{compositor_id}"
+        path = item.get("accessible_path")
+        if isinstance(path, str) and path.startswith("/org/a11y/atspi/accessible/"):
+            return f"atspi:{pid}:{birth}:{path}"
         return None
 
     @staticmethod
@@ -119,7 +119,7 @@ class DesktopObservationService:
                     "session_id": self._session_id,
                     "process_start_time": self._pid_start_time(item["pid"]),
                     "stable": True,
-                    "source_key": "atspi-accessible" if key.startswith("atspi:") else "compositor-window",
+                    "source_key": "compositor-window" if key.startswith("compositor:") else "atspi-accessible",
                 }
                 item["state"] = self._state(raw)
                 item["geometry"] = {
@@ -130,7 +130,7 @@ class DesktopObservationService:
                     "verified": raw.get("compositor_verified") is True,
                 }
                 item["provenance"] = {
-                    "identity": "at-spi2" if key.startswith("atspi:") else "worldline-gnome-shell",
+                    "identity": "worldline-gnome-shell" if key.startswith("compositor:") else "at-spi2",
                     "geometry": raw.get("geometry_source") or "unknown",
                     "semantic": "at-spi2" if raw.get("accessible_path") else None,
                     "compositor_verified": raw.get("compositor_verified") is True,
