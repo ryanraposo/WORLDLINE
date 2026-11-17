@@ -85,3 +85,38 @@ def test_event_cursor_reports_when_consumer_must_resynchronize():
     assert result["resync_required"] is True
     assert result["events"] == []
     assert result["earliest_sequence"] > 1
+
+
+
+def test_pid_reuse_changes_identity_even_when_compositor_id_is_reused(monkeypatch):
+    from worldline.desktop import DesktopObservationService
+
+    birth = ["1000"]
+    monkeypatch.setattr(DesktopObservationService, "_pid_start_time",
+                        staticmethod(lambda pid: birth[0]))
+    service = DesktopObservationService(lambda **_: reading([window()]))
+    first = service.refresh()["windows"][0]["window_id"]
+    birth[0] = "2000"
+    second = service.refresh()["windows"][0]["window_id"]
+    assert second != first
+
+
+def test_daemon_desktop_operation_exposes_snapshot_resolve_and_event_cursor():
+    from worldline.daemon import WorldlineDaemon
+
+    service = DesktopObservationService(lambda **_: reading([window()]))
+    daemon = WorldlineDaemon()
+    daemon.desktop = service
+    snapshot = daemon.dispatch({"op": "desktop", "args": {"action": "snapshot"}})
+    assert snapshot["ok"]
+    window_id = snapshot["result"]["windows"][0]["window_id"]
+    resolved = daemon.dispatch({"op": "desktop", "args": {
+        "action": "resolve", "window_id": window_id}})
+    assert resolved["ok"] and resolved["result"]["window"]["window_id"] == window_id
+    events = daemon.dispatch({"op": "desktop", "args": {
+        "action": "events", "after_sequence": 0}})
+    assert events["ok"] and events["result"]["events"]
+    stale = daemon.dispatch({"op": "desktop", "args": {
+        "action": "resolve", "window_id": "window:missing"}})
+    assert stale["ok"] is False
+    assert stale["error"]["code"] == "stale_window_identity"
