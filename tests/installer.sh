@@ -5,6 +5,9 @@ installer="$ROOT/scripts/worldline-install.sh"
 bash -n "$installer"
 grep -Fq 'INSTALL_REF="${WORLDLINE_INSTALL_REF:-main}"' "$installer"
 grep -Fq 'response.get("protocol") != 1' "$installer"
+grep -Fq 'preexisting-enabled' "$installer"
+grep -Fq 'preexisting-disabled' "$installer"
+grep -Fq 'gnome-extensions info "$extension_id"' "$ROOT/scripts/install_user_service.sh"
 if grep -Fq '\nINSTALL_REF=' "$installer"; then
   printf 'installer ref declaration contains a literal escaped newline\n' >&2
   exit 1
